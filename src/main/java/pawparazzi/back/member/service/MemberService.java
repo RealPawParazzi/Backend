@@ -43,6 +43,9 @@ public class MemberService {
         if (memberRepository.existsByEmail(registerDto.getEmail())) {
             throw new DuplicatedMemberException("duplicated email");
         }
+
+        Member newMember = registerDto.toMember();
+        memberRepository.save(newMember);
     }
 
     public void deleteMember(Long memberId){
