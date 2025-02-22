@@ -48,8 +48,8 @@ public class MemberController {
     }
 
     @DeleteMapping("/{memberId}")
-    public ResponseEntity<?> deleteMember(@PathVariable Long memberId) {
-        memberService.deleteMember(memberId);
+    public ResponseEntity<?> deleteMember(@PathVariable Long userId) {
+        memberService.deleteMember(userId);
         return ResponseEntity.ok(Map.of("message", "회원이 성공적으로 삭제되었습니다."));
     }
 }
