@@ -1,50 +1,35 @@
 package pawparazzi.back.member.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
-import pawparazzi.back.pet.entity.Pet;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
+@Table(name = "member")
 @Getter
-@Setter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
+@AllArgsConstructor
 public class Member {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", unique = true, nullable = false)
     private Long id;
-
-    @Column(nullable = false, unique = true)
-    private String name;
 
     @Column(nullable = false, unique = true)
     private String email;
 
     @Column(nullable = false)
-    private String password;
+    private String password; // 암호화 저장 필요
 
-    private String userImg;
+    @Column(nullable = false, unique = true)
+    private String nickName;
 
+    @Column
+    private String profileImageUrl;
 
-    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Pet> pets = new ArrayList<>();
-
-    @Builder
-    public Member(String name, String email, String password, String userImg) {
-        this.name = name;
+    public Member(String email, String password, String nickName, String profileImageUrl) {
         this.email = email;
         this.password = password;
-        this.userImg = userImg;
-    }
-
-    //연관관계 메서드
-    public void addPet(Pet pet) {
-        pets.add(pet);
-        pet.setMember(this);
+        this.nickName = nickName;
+        this.profileImageUrl = profileImageUrl;
     }
 }
