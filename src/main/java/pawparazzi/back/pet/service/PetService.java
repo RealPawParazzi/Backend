@@ -28,8 +28,8 @@ public class PetService {
 
     //펫 조회
     @Transactional(readOnly = true)
-    public List<Pet> getPetsByMember(Long userId) {
-        return petRepository.findByMemberId(userId);
+    public List<Pet> getPetsByMember(Long id) {
+        return petRepository.findByMemberId(id);
     }
 
     //펫 상세조회

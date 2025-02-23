@@ -9,8 +9,8 @@ import java.util.List;
 
 @Repository
 public interface PetRepository extends JpaRepository<Pet, Long> {
-    @Query("select p from Pet p where p.member.userId = :userId")
-    List<Pet> findByMemberId(Long userId);
+    @Query("select p from Pet p where p.member.id = :id")
+    List<Pet> findByMemberId(Long id);
 
     boolean existsByName(String name);
 }
