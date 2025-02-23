@@ -10,12 +10,9 @@ import lombok.Setter;
 public class MemberLoginDto {
 
     @Email
-    @NotBlank
+    @NotBlank(message = "아이디(이메일)는 필수 값입니다")
     private String email;
 
-    @NotBlank
-    private String name;
-
-    @NotBlank
+    @NotBlank(message = "비밀번호는 필수 값입니다.")
     private String password;
 }

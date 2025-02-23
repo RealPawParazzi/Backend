@@ -2,6 +2,7 @@ package pawparazzi.back.member.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import pawparazzi.back.member.dto.MemberLoginDto;
 import pawparazzi.back.member.dto.MemberRegisterDto;
 import pawparazzi.back.member.entity.Member;
@@ -13,6 +14,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class MemberService {
 
@@ -63,4 +65,8 @@ public class MemberService {
         }
     }
 
+    public Member findMemberById(Long memberId) {
+        return memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+    }
 }
