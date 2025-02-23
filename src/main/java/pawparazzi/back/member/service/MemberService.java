@@ -65,7 +65,7 @@ public class MemberService {
     }
 
     public Member findById(Long id) {
-        return memberRepository.findById(String.valueOf(id))
+        return memberRepository.findById(id)
                 .orElseThrow(()-> new EntityNotFoundException("회원 정보 없음"));
     }
 }
