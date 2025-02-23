@@ -1,5 +1,6 @@
 package pawparazzi.back.member.service;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -61,5 +62,10 @@ public class MemberService {
 
         // 3. JWT 토큰 생성 및 반환
         return jwtUtil.generateToken(member.getEmail());
+    }
+
+    public Member findById(Long id) {
+        return memberRepository.findById(String.valueOf(id))
+                .orElseThrow(()-> new EntityNotFoundException("회원 정보 없음"));
     }
 }

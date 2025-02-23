@@ -25,7 +25,7 @@ public class PetResponseDto {
         this.type = pet.getType();
         this.birthDate = pet.getBirthDate();
         this.petImg = pet.getPetImg();
-        this.member = new MemberInfo(pet.getMember().getName(), pet.getMember().getEmail());
+        this.member = new MemberInfo(pet.getMember().getNickName(), pet.getMember().getEmail());
     }
 
     @Data

@@ -26,7 +26,7 @@ public class PetController {
     @PostMapping("/{userId}/register")
     public ResponseEntity<PetResponseDto> registerPet(@PathVariable Long userId,
                                                       @RequestBody PetRegisterRequestDto registerDto){
-        Member member = memberService.findMemberById(userId);
+        Member member = memberService.findById(userId);
         Pet pet = petService.registerPet(member, registerDto);
         return ResponseEntity.ok(new PetResponseDto(pet));
     }
