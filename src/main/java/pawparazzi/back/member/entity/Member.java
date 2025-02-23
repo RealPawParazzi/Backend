@@ -2,6 +2,10 @@ package pawparazzi.back.member.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import pawparazzi.back.pet.entity.Pet;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "member")
@@ -26,10 +30,19 @@ public class Member {
     @Column
     private String profileImageUrl;
 
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Pet> pets = new ArrayList<>();
+
     public Member(String email, String password, String nickName, String profileImageUrl) {
         this.email = email;
         this.password = password;
         this.nickName = nickName;
         this.profileImageUrl = profileImageUrl;
+    }
+
+    //연관관계 메서드
+    public void addPet(Pet pet) {
+        pets.add(pet);
+        pet.setMember(this);
     }
 }
