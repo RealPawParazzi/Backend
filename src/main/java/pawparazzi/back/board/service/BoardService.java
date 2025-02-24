@@ -33,7 +33,6 @@ public class BoardService {
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        // 1️⃣ MongoDB에 먼저 게시물 저장 (MySQL ID 없이)
         List<BoardDocument.ContentDto> contents = requestDto.getContents().stream()
                 .map(dto -> new BoardDocument.ContentDto(dto.getType(), dto.getValue()))
                 .collect(Collectors.toList());
@@ -53,11 +52,10 @@ public class BoardService {
         BoardDocument boardDocument = new BoardDocument(null, requestDto.getTitle(), firstImage, firstText, contents);
         boardMongoRepository.save(boardDocument);
 
-        // 2️⃣ MySQL에 게시물 저장 (MongoDB ID 사용)
+
         Board board = new Board(member, boardDocument.getId());
         boardRepository.save(board);
 
-        // 3️⃣ MySQL ID를 다시 MongoDB에 업데이트
         boardDocument.setMysqlId(board.getId());
         boardMongoRepository.save(boardDocument);
 
