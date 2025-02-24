@@ -10,6 +10,6 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ContentDto {
-    private String type;  // "text", "image", "video"
+    private String type;
     private String value;
 }

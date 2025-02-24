@@ -9,8 +9,8 @@ import java.util.List;
 @Getter
 @Setter
 public class BoardCreateRequestDto {
-    private String title; // 게시글 제목
-    private List<ContentDto> contents; // 본문 및 미디어 리스트
+    private String title;
+    private List<ContentDto> contents;
 
     @Getter
     @Setter

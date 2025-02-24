@@ -17,26 +17,26 @@ import java.util.List;
 public class BoardDocument {
 
     @Id
-    private String id;  // MongoDB ObjectId
+    private String id;
 
-    @Indexed(unique = true)  // MySQL ID로 조회 가능하도록 인덱싱
-    private Long mysqlId;  // MySQL의 게시글 ID
+    @Indexed(unique = true)
+    private Long mysqlId;
 
-    private String title;  // 게시글 제목
+    private String title;
 
-    private String titleImage;  // 대표 이미지
+    private String titleImage;
 
-    private String titleContent;  // 대표 텍스트 (본문 요약)
+    private String titleContent;
 
-    private List<ContentDto> contents;  // 본문 내용 (텍스트, 이미지, 동영상)
+    private List<ContentDto> contents;
 
     @Getter
     @Setter
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ContentDto {
-        private String type;  // "text" | "image" | "video"
-        private String value; // 본문 데이터
+        private String type;
+        private String value;
     }
 
     public BoardDocument(Long mysqlId, String title, String titleImage, String titleContent, List<ContentDto> contents) {
