@@ -6,13 +6,14 @@ import org.springframework.transaction.annotation.Transactional;
 import pawparazzi.back.board.dto.BoardCreateRequestDto;
 import pawparazzi.back.board.dto.BoardListResponseDto;
 import pawparazzi.back.board.dto.BoardDetailDto;
-import pawparazzi.back.board.entity.*;
-import pawparazzi.back.board.repository.*;
-import pawparazzi.back.security.util.JwtUtil;
+import pawparazzi.back.board.entity.Board;
+import pawparazzi.back.board.entity.BoardDocument;
+import pawparazzi.back.board.repository.BoardRepository;
+import pawparazzi.back.board.repository.BoardMongoRepository;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
+import pawparazzi.back.security.util.JwtUtil;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,15 +22,10 @@ import java.util.stream.Collectors;
 public class BoardService {
 
     private final BoardRepository boardRepository;
-    private final BoardContentRepository boardContentRepository;
-    private final BoardMediaRepository boardMediaRepository;
-    private final BoardOrderRepository boardOrderRepository;
+    private final BoardMongoRepository boardMongoRepository;
     private final MemberRepository memberRepository;
     private final JwtUtil jwtUtil;
 
-    /**
-     * 게시글 등록
-     */
     @Transactional
     public BoardDetailDto createBoard(BoardCreateRequestDto requestDto, String token) {
         Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
@@ -37,70 +33,59 @@ public class BoardService {
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        Board board = new Board(requestDto.getTitle(), member);
+        // 1️⃣ MongoDB에 먼저 게시물 저장 (MySQL ID 없이)
+        List<BoardDocument.ContentDto> contents = requestDto.getContents().stream()
+                .map(dto -> new BoardDocument.ContentDto(dto.getType(), dto.getValue()))
+                .collect(Collectors.toList());
+
+        String firstText = contents.stream()
+                .filter(c -> "text".equals(c.getType()))
+                .map(BoardDocument.ContentDto::getValue)
+                .findFirst()
+                .orElse(null);
+
+        String firstImage = contents.stream()
+                .filter(c -> "image".equals(c.getType()))
+                .map(BoardDocument.ContentDto::getValue)
+                .findFirst()
+                .orElse(null);
+
+        BoardDocument boardDocument = new BoardDocument(null, requestDto.getTitle(), firstImage, firstText, contents);
+        boardMongoRepository.save(boardDocument);
+
+        // 2️⃣ MySQL에 게시물 저장 (MongoDB ID 사용)
+        Board board = new Board(member, boardDocument.getId());
         boardRepository.save(board);
 
-        List<BoardContent> contentList = new ArrayList<>();
-        List<BoardMedia> mediaList = new ArrayList<>();
-        List<BoardOrder> orderList = new ArrayList<>();
-        int orderIndex = 1;
+        // 3️⃣ MySQL ID를 다시 MongoDB에 업데이트
+        boardDocument.setMysqlId(board.getId());
+        boardMongoRepository.save(boardDocument);
 
-        for (BoardCreateRequestDto.ContentDto contentDto : requestDto.getContents()) {
-            if (contentDto.getContentData() != null) {
-                BoardContent content = new BoardContent(board, contentDto.getContentData());
-                boardContentRepository.save(content);
-                contentList.add(content);
-                orderList.add(new BoardOrder(board, content, null, orderIndex++));
-            } else if (contentDto.getMediaUrl() != null) {
-                BoardMedia media = new BoardMedia(board, contentDto.getMediaUrl(), BoardMedia.MediaType.valueOf(contentDto.getMediaType()));
-                boardMediaRepository.save(media);
-                mediaList.add(media);
-                orderList.add(new BoardOrder(board, null, media, orderIndex++));
-            }
-        }
-
-        boardOrderRepository.saveAll(orderList);
-
-        board.setTitleContent(contentList.isEmpty() ? null : contentList.get(0).getContentData());
-        board.setTitleImage(mediaList.stream()
-                .filter(m -> m.getMediaType() == BoardMedia.MediaType.IMAGE)
-                .map(BoardMedia::getMediaUrl)
-                .findFirst()
-                .orElse(null));
-
-        return getBoardDetailDto(board);
+        return convertToBoardDetailDto(board, boardDocument);
     }
 
-    /**
-     * 게시글 상세 조회
-     */
-    @Transactional(readOnly = true)
-    public BoardDetailDto getBoardDetail(Long boardId) {
-        Board board = boardRepository.findById(boardId)
-                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
-        return getBoardDetailDto(board);
-    }
-
-    /**
-     * 게시글 전체 조회 ( 게시물의 대해서는 타이틀 이미지, 타이틀 텍스트만 포함)
-     */
     @Transactional(readOnly = true)
     public List<BoardListResponseDto> getBoardList() {
-        return boardRepository.findAll().stream()
+        List<Board> boards = boardRepository.findAll();
+
+        return boards.stream()
                 .map(this::convertToBoardListResponseDto)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Board → BoardListResponseDto 변환
-     */
     private BoardListResponseDto convertToBoardListResponseDto(Board board) {
+        BoardDocument boardDocument = boardMongoRepository.findByMysqlId(board.getId())
+                .orElseThrow(() -> new IllegalArgumentException("MongoDB에 해당 게시글이 존재하지 않습니다."));
+
         BoardListResponseDto dto = new BoardListResponseDto();
         dto.setId(board.getId());
-        dto.setTitle(board.getTitle());
-        dto.setTitleImage(board.getTitleImage());
-        dto.setTitleContent(board.getTitleContent());
+        dto.setTitle(boardDocument.getTitle());
+        dto.setTitleImage(boardDocument.getTitleImage());
+        dto.setTitleContent(boardDocument.getTitleContent());
         dto.setWriteDatetime(board.getWriteDatetime());
+        dto.setFavoriteCount(board.getFavoriteCount());
+        dto.setCommentCount(board.getCommentCount());
+        dto.setViewCount(board.getViewCount());
 
         if (board.getAuthor() != null) {
             BoardListResponseDto.AuthorDto authorDto = new BoardListResponseDto.AuthorDto();
@@ -113,46 +98,41 @@ public class BoardService {
         return dto;
     }
 
-    /**
-     * Board→ BoardDetailDto 변환
-     */
-    private BoardDetailDto getBoardDetailDto(Board board) {
-        BoardDetailDto responseDto = new BoardDetailDto();
-        responseDto.setId(board.getId());
-        responseDto.setTitle(board.getTitle());
-        responseDto.setTitleImage(board.getTitleImage());
-        responseDto.setTitleContent(board.getTitleContent());
-        responseDto.setWriteDatetime(board.getWriteDatetime());
-        responseDto.setFavoriteCount(board.getFavoriteCount());
-        responseDto.setCommentCount(board.getCommentCount());
-        responseDto.setViewCount(board.getViewCount());
+    @Transactional(readOnly = true)
+    public BoardDetailDto getBoardDetail(Long boardId) {
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new IllegalArgumentException("MySQL에 해당 게시글이 존재하지 않습니다."));
+
+        BoardDocument boardDocument = boardMongoRepository.findByMysqlId(board.getId())
+                .orElseThrow(() -> new IllegalArgumentException("MongoDB에 해당 게시글이 존재하지 않습니다."));
+
+        return convertToBoardDetailDto(board, boardDocument);
+    }
+
+    private BoardDetailDto convertToBoardDetailDto(Board board, BoardDocument boardDocument) {
+        BoardDetailDto dto = new BoardDetailDto();
+        dto.setId(board.getId());
+        dto.setTitle(boardDocument.getTitle());
+        dto.setTitleImage(boardDocument.getTitleImage());
+        dto.setTitleContent(boardDocument.getTitleContent());
+        dto.setWriteDatetime(board.getWriteDatetime());
+        dto.setFavoriteCount(board.getFavoriteCount());
+        dto.setCommentCount(board.getCommentCount());
+        dto.setViewCount(board.getViewCount());
 
         if (board.getAuthor() != null) {
             BoardDetailDto.AuthorDto authorDto = new BoardDetailDto.AuthorDto();
             authorDto.setId(board.getAuthor().getId());
             authorDto.setNickname(board.getAuthor().getNickName());
             authorDto.setProfileImageUrl(board.getAuthor().getProfileImageUrl());
-            responseDto.setAuthor(authorDto);
+            dto.setAuthor(authorDto);
         }
 
-        List<BoardOrder> orders = boardOrderRepository.findByBoardIdOrderByOrderIndexAsc(board.getId());
-        List<BoardDetailDto.ContentDto> contents = new ArrayList<>();
+        // MongoDB에서 가져온 contents 데이터를 변환 후 저장
+        dto.setContents(boardDocument.getContents().stream()
+                .map(content -> new BoardDetailDto.ContentDto(content.getType(), content.getValue()))
+                .collect(Collectors.toList()));
 
-        for (BoardOrder order : orders) {
-            BoardDetailDto.ContentDto contentDto = new BoardDetailDto.ContentDto();
-            contentDto.setOrderIndex(order.getOrderIndex());
-
-            if (order.getContent() != null) {
-                contentDto.setContentData(order.getContent().getContentData());
-            } else if (order.getMedia() != null) {
-                contentDto.setMediaUrl(order.getMedia().getMediaUrl());
-                contentDto.setMediaType(order.getMedia().getMediaType().name());
-            }
-
-            contents.add(contentDto);
-        }
-
-        responseDto.setContents(contents);
-        return responseDto;
+        return dto;
     }
 }

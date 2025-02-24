@@ -1,5 +1,6 @@
 package pawparazzi.back.board.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,17 +19,9 @@ public class BoardDetailDto {
     private int favoriteCount;
     private int commentCount;
     private int viewCount;
+
     private AuthorDto author;
     private List<ContentDto> contents;
-
-    @Getter
-    @Setter
-    public static class ContentDto {
-        private String contentData;
-        private String mediaUrl;
-        private String mediaType;
-        private int orderIndex;
-    }
 
     @Getter
     @Setter
@@ -36,5 +29,15 @@ public class BoardDetailDto {
         private Long id;
         private String nickname;
         private String profileImageUrl;
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    public static class ContentDto {
+        private String type;
+        private String value;
+
+
     }
 }

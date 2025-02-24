@@ -19,6 +19,11 @@ spring:
       org.hibernate.SQL: DEBUG
       org.hibernate.orm.jdbc.bind: TRACE
 
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/pawparazzi
+      database: pawparazzi
+
 jwt:
   secret: "aS3cr3tKeyThatIsLongEnoughToBeSecureAndSafeForHS256"
   expiration: 86400000
