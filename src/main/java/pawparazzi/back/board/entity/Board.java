@@ -35,7 +35,7 @@ public class Board {
     private int viewCount = 0;
 
     @Column(nullable = false)
-    private LocalDateTime writeDatetime = LocalDateTime.now();
+    private LocalDateTime writeDatetime = LocalDateTime.now().withNano(0);;
 
     public Board(Member author, String mongoId) {
         this.author = author;
