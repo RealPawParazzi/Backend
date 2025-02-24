@@ -7,8 +7,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.filter.OncePerRequestFilter;
+import pawparazzi.back.security.service.CustomUserDetailsService;
 import pawparazzi.back.security.util.JwtUtil;
 import pawparazzi.back.security.token.JwtAuthenticationToken;
 
@@ -18,7 +18,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final UserDetailsService userDetailsService;
+    private final CustomUserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -30,11 +30,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             token = token.substring(7);
 
             if (jwtUtil.validateToken(token)) {
-                String email = jwtUtil.extractEmail(token);
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                Long memberId = jwtUtil.extractMemberId(token);
+                UserDetails userDetails = userDetailsService.loadUserById(memberId);
 
-                // JWT 인증 정보 설정
-                JwtAuthenticationToken authentication = new JwtAuthenticationToken(userDetails, token, userDetails.getAuthorities());
+                JwtAuthenticationToken authentication =
+                        new JwtAuthenticationToken(userDetails, token, userDetails.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         }

@@ -19,5 +19,8 @@ public class SignUpRequestDto {
     @NotBlank(message = "닉네임은 필수 입력값입니다.")
     private String nickName;
 
-    private String profileImageUrl; // 프로필 이미지는 선택 값
+    @NotBlank
+    private String name;
+
+    private String profileImageUrl;
 }
