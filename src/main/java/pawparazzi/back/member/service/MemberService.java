@@ -11,6 +11,8 @@ import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
 import pawparazzi.back.security.util.JwtUtil;
 
+import java.util.Optional;
+
 
 @Service
 @RequiredArgsConstructor
@@ -43,9 +45,12 @@ public class MemberService {
      * 로그인
      */
     public String login(LoginRequestDto request) {
+        Optional<Member> memberOptional = memberRepository.findByEmail(request.getEmail());
+        if (memberOptional.isEmpty()) {
+            throw new BadCredentialsException("이메일 또는 비밀번호가 잘못되었습니다.");
+        }
 
-        Member member = memberRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BadCredentialsException("이메일 또는 비밀번호가 잘못되었습니다."));
+        Member member = memberOptional.get();
 
         if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
             throw new BadCredentialsException("이메일 또는 비밀번호가 잘못되었습니다.");
