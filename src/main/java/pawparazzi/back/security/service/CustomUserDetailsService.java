@@ -14,17 +14,20 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
-
     private final MemberRepository memberRepository;
 
+    // ✅ ID 기반으로 사용자 조회
+    public UserDetails loadUserById(Long memberId) throws UsernameNotFoundException {
+        return memberRepository.findById(memberId)
+                .map(CustomUserDetails::new)
+                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + memberId));
+    }
+
+    // ✅ 이메일 기반으로 사용자 조회
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        Optional<Member> memberOptional = memberRepository.findByEmail(email);
-
-        if (memberOptional.isEmpty()) {
-            throw new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + email);
-        }
-
-        return new CustomUserDetails(memberOptional.get());
+        return memberRepository.findByEmail(email)
+                .map(CustomUserDetails::new)
+                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + email));
     }
 }

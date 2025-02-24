@@ -11,7 +11,6 @@ import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
 import pawparazzi.back.security.util.JwtUtil;
 
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -25,47 +24,42 @@ public class MemberService {
      * 회원가입
      */
     public void registerUser(SignUpRequestDto request) {
-        // 1. 이메일 중복 확인
         if (memberRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");
         }
 
-        // 2. 닉네임 중복 확인
         if (memberRepository.existsByNickName(request.getNickName())) {
             throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
         }
 
-        // 3. 비밀번호 암호화
+        // 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 
-        // 4. 회원 데이터 저장
-        Member member = new Member(request.getEmail(), encodedPassword, request.getNickName(), request.getProfileImageUrl());
+        Member member = new Member(request.getEmail(), encodedPassword, request.getNickName(), request.getProfileImageUrl(), request.getName());
         memberRepository.save(member);
     }
 
     /**
-     * 로그인 (JWT 발급)
+     * 로그인
      */
     public String login(LoginRequestDto request) {
-        // 1. 이메일로 사용자 조회
-        Optional<Member> memberOptional = memberRepository.findByEmail(request.getEmail());
-        if (memberOptional.isEmpty()) {
-            throw new BadCredentialsException("이메일 또는 비밀번호가 잘못되었습니다.");
-        }
 
-        Member member = memberOptional.get();
+        Member member = memberRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadCredentialsException("이메일 또는 비밀번호가 잘못되었습니다."));
 
-        // 2. 비밀번호 검증
         if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
             throw new BadCredentialsException("이메일 또는 비밀번호가 잘못되었습니다.");
         }
 
-        // 3. JWT 토큰 생성 및 반환
-        return jwtUtil.generateToken(member.getEmail());
+        // JWT를 memberId 기반으로 생성
+        return jwtUtil.generateIdToken(member.getId());
     }
 
+    /**
+     * ID로 사용자 조회
+     */
     public Member findById(Long id) {
         return memberRepository.findById(id)
-                .orElseThrow(()-> new EntityNotFoundException("회원 정보 없음"));
+                .orElseThrow(() -> new EntityNotFoundException("회원 정보 없음"));
     }
 }

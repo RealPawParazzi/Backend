@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pawparazzi.back.member.dto.request.LoginRequestDto;
 import pawparazzi.back.member.dto.request.SignUpRequestDto;
+import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.service.MemberService;
 import pawparazzi.back.security.util.JwtUtil;
 
@@ -17,26 +18,25 @@ import java.util.Map;
 public class MemberController {
 
     private final JwtUtil jwtUtil;
-
     private final MemberService memberService;
 
-    // 회원기입
+    // 회원가입
     @PostMapping("/signup")
     public ResponseEntity<String> registerUser(@Valid @RequestBody SignUpRequestDto request) {
         memberService.registerUser(request);
         return ResponseEntity.ok("회원가입 성공");
     }
-    // 로그인
+
+    // 로그인 (JWT 발급)
     @PostMapping("/login")
     public ResponseEntity<Map<String, String>> login(@Valid @RequestBody LoginRequestDto request) {
         String token = memberService.login(request);
         return ResponseEntity.ok(Map.of("token", token));
     }
 
-    // 토큰 유효 검사(테스트용)
+    // 토큰 검증
     @GetMapping("/validate")
     public ResponseEntity<String> validateToken(@RequestHeader("Authorization") String token) {
-        // "Bearer " 제거
         token = token.replace("Bearer ", "");
 
         if (jwtUtil.validateToken(token)) {
@@ -44,5 +44,14 @@ public class MemberController {
         } else {
             return ResponseEntity.status(401).body("유효하지 않은 토큰입니다.");
         }
+    }
+
+    // 현재 로그인한 사용자 정보 조회
+    @GetMapping("/me")
+    public ResponseEntity<Member> getCurrentUser(@RequestHeader("Authorization") String token) {
+        token = token.replace("Bearer ", "");
+        Long memberId = jwtUtil.extractMemberId(token);
+        Member member = memberService.findById(memberId);
+        return ResponseEntity.ok(member);
     }
 }

@@ -22,10 +22,13 @@ public class Member {
     private String email;
 
     @Column(nullable = false)
-    private String password; // 암호화 저장 필요
+    private String password;
 
     @Column(nullable = false, unique = true)
     private String nickName;
+
+    @Column
+    private String name;
 
     @Column
     private String profileImageUrl;
@@ -33,11 +36,12 @@ public class Member {
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Pet> pets = new ArrayList<>();
 
-    public Member(String email, String password, String nickName, String profileImageUrl) {
+    public Member(String email, String password, String nickName, String profileImageUrl, String name) {
         this.email = email;
         this.password = password;
         this.nickName = nickName;
         this.profileImageUrl = profileImageUrl;
+        this.name = name;
     }
 
     //연관관계 메서드

@@ -20,22 +20,24 @@ public class JwtUtil {
         this.expiration = expiration;
     }
 
-    // JWT 토큰 생성
-    public String generateToken(String email) {
+    // 사용자 ID 기반 JWT 생성
+    public String generateIdToken(Long memberId) {
         return Jwts.builder()
-                .setSubject(email)
+                .setSubject(String.valueOf(memberId))
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    // 토큰에서 이메일 추출
-    public String extractEmail(String token) {
-        return Jwts.parserBuilder().setSigningKey(key).build()
+    // 토큰에서 사용자 ID 추출
+    public Long extractMemberId(String token) {
+        return Long.parseLong(Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
                 .parseClaimsJws(token)
                 .getBody()
-                .getSubject();
+                .getSubject());
     }
 
     // 토큰 유효성 검증
