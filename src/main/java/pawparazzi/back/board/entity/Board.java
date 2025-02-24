@@ -7,7 +7,6 @@ import lombok.Setter;
 import pawparazzi.back.member.entity.Member;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Getter
@@ -19,17 +18,12 @@ public class Board {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 255)
-    private String title;
+    @Column(nullable = false, unique = true)
+    private String mongoId;
 
-    @Column(columnDefinition = "TEXT")
-    private String titleImage;
-
-    @Column(columnDefinition = "TEXT")
-    private String titleContent;
-
-    @Column(nullable = false)
-    private LocalDateTime writeDatetime = LocalDateTime.now();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", nullable = false)
+    private Member author;
 
     @Column(nullable = false)
     private int favoriteCount = 0;
@@ -40,21 +34,11 @@ public class Board {
     @Column(nullable = false)
     private int viewCount = 0;
 
-    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<BoardContent> contents;
+    @Column(nullable = false)
+    private LocalDateTime writeDatetime = LocalDateTime.now().withNano(0);;
 
-    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<BoardMedia> media;
-
-    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<BoardOrder> orders;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", nullable = false)
-    private Member author;
-
-    public Board(String title, Member author) {
-        this.title = title;
+    public Board(Member author, String mongoId) {
         this.author = author;
+        this.mongoId = mongoId;
     }
 }
