@@ -2,6 +2,7 @@ package pawparazzi.back.member.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.pet.entity.Pet;
 
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ import java.util.List;
 @Entity
 @Table(name = "member")
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Member {
@@ -35,6 +37,9 @@ public class Member {
 
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Pet> pets = new ArrayList<>();
+
+    @OneToMany(mappedBy = "author", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<Board> boards = new ArrayList<>();
 
     public Member(String email, String password, String nickName, String profileImageUrl, String name) {
         this.email = email;
