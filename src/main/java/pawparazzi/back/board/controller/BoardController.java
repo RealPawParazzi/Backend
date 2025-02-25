@@ -61,7 +61,7 @@ public class BoardController {
     }
 
     /**
-     * 특정 회원의 게시물 조회 API
+     * 특정 회원의 게시물 조회
      */
     @GetMapping("/member/{memberId}")
     public ResponseEntity<List<BoardListResponseDto>> getBoardsByMember(@PathVariable Long memberId) {
@@ -71,7 +71,7 @@ public class BoardController {
 
 
     /**
-     * 게시물 삭제 API
+     * 게시물 삭제
      */
     @DeleteMapping("/{boardId}")
     public ResponseEntity<String> deleteBoard(

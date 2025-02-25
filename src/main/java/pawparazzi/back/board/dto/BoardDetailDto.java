@@ -3,6 +3,7 @@ package pawparazzi.back.board.dto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import pawparazzi.back.board.entity.BoardVisibility;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,6 +15,7 @@ public class BoardDetailDto {
 
     private Long id;
     private String title;
+    private BoardVisibility visibility;
     private String titleImage;
     private String titleContent;
     private LocalDateTime writeDatetime;
@@ -38,7 +40,5 @@ public class BoardDetailDto {
     public static class ContentDto {
         private String type;
         private String value;
-
-
     }
 }

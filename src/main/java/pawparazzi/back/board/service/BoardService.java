@@ -1,6 +1,7 @@
 package pawparazzi.back.board.service;
 
 import jakarta.persistence.EntityNotFoundException;
+import kotlin.reflect.KVisibility;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,6 +11,7 @@ import pawparazzi.back.board.dto.BoardDetailDto;
 import pawparazzi.back.board.dto.BoardUpdateRequestDto;
 import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.board.entity.BoardDocument;
+import pawparazzi.back.board.entity.BoardVisibility;
 import pawparazzi.back.board.repository.BoardRepository;
 import pawparazzi.back.board.repository.BoardMongoRepository;
 import pawparazzi.back.member.entity.Member;
@@ -43,7 +45,6 @@ public class BoardService {
                 .collect(Collectors.toList());
 
         String titleImage = requestDto.getTitleImage();
-
         if (titleImage == null || titleImage.isBlank()) {
             titleImage = contents.stream()
                     .filter(c -> "image".equals(c.getType()))
@@ -58,10 +59,14 @@ public class BoardService {
                 .findFirst()
                 .orElse(null);
 
+        if (requestDto.getVisibility() == null) {
+            throw new IllegalArgumentException("게시물 공개 설정은 필수 입력값입니다.");
+        }
+
         BoardDocument boardDocument = new BoardDocument(null, requestDto.getTitle(), titleImage, firstText, contents);
         boardMongoRepository.save(boardDocument);
 
-        Board board = new Board(member, boardDocument.getId());
+        Board board = new Board(member, boardDocument.getId(), requestDto.getVisibility());
         boardRepository.save(board);
 
         boardDocument.setMysqlId(board.getId());
@@ -69,6 +74,7 @@ public class BoardService {
 
         return convertToBoardDetailDto(board, boardDocument);
     }
+
     /**
      * 게시물 수정
      */
@@ -86,23 +92,37 @@ public class BoardService {
         BoardDocument boardDocument = boardMongoRepository.findByMysqlId(boardId)
                 .orElseThrow(() -> new EntityNotFoundException("MongoDB에서 해당 게시글을 찾을 수 없습니다."));
 
-        boardDocument.setTitle(requestDto.getTitle());
-        boardDocument.setTitleImage(requestDto.getTitleImage());
+        // 수정할 데이터만 업데이트 (null 값이면 기존 데이터 유지)
+        if (requestDto.getTitle() != null && !requestDto.getTitle().isBlank()) {
+            boardDocument.setTitle(requestDto.getTitle());
+        }
 
-        List<BoardDocument.ContentDto> updatedContents = requestDto.getContents().stream()
-                .map(dto -> new BoardDocument.ContentDto(dto.getType(), dto.getValue()))
-                .collect(Collectors.toList());
+        if (requestDto.getTitleImage() != null && !requestDto.getTitleImage().isBlank()) {
+            boardDocument.setTitleImage(requestDto.getTitleImage());
+        }
 
-        boardDocument.setContents(updatedContents);
+        if (requestDto.getContents() != null && !requestDto.getContents().isEmpty()) {
+            List<BoardDocument.ContentDto> updatedContents = requestDto.getContents().stream()
+                    .map(dto -> new BoardDocument.ContentDto(dto.getType(), dto.getValue()))
+                    .collect(Collectors.toList());
+            boardDocument.setContents(updatedContents);
 
-        String firstText = updatedContents.stream()
-                .filter(c -> "text".equals(c.getType()))
-                .map(BoardDocument.ContentDto::getValue)
-                .findFirst()
-                .orElse(null);
-        boardDocument.setTitleContent(firstText);
+            // 첫 번째 텍스트를 자동으로 `titleContent`에 반영
+            String firstText = updatedContents.stream()
+                    .filter(c -> "text".equals(c.getType()))
+                    .map(BoardDocument.ContentDto::getValue)
+                    .findFirst()
+                    .orElse(null);
+            boardDocument.setTitleContent(firstText);
+        }
 
+        if (requestDto.getVisibility() != null) {
+            board.setVisibility(requestDto.getVisibility());
+        }
+
+        // MongoDB 업데이트
         boardMongoRepository.save(boardDocument);
+        boardRepository.save(board); // MySQL도 업데이트 반영
 
         return convertToBoardDetailDto(board, boardDocument);
     }
@@ -118,6 +138,7 @@ public class BoardService {
         List<Board> boards = boardRepository.findByAuthor(member);
 
         return boards.stream()
+                .filter(board -> board.getVisibility() == BoardVisibility.PUBLIC)
                 .map(this::convertToBoardListResponseDto)
                 .collect(Collectors.toList());
     }
@@ -130,6 +151,7 @@ public class BoardService {
         List<Board> boards = boardRepository.findAll();
 
         return boards.stream()
+                .filter(board -> board.getVisibility() == BoardVisibility.PUBLIC)
                 .map(this::convertToBoardListResponseDto)
                 .collect(Collectors.toList());
     }
@@ -147,6 +169,7 @@ public class BoardService {
         dto.setFavoriteCount(board.getFavoriteCount());
         dto.setCommentCount(board.getCommentCount());
         dto.setViewCount(board.getViewCount());
+        dto.setVisibility(board.getVisibility());
 
         if (board.getAuthor() != null) {
             BoardListResponseDto.AuthorDto authorDto = new BoardListResponseDto.AuthorDto();
@@ -183,6 +206,7 @@ public class BoardService {
         dto.setFavoriteCount(board.getFavoriteCount());
         dto.setCommentCount(board.getCommentCount());
         dto.setViewCount(board.getViewCount());
+        dto.setVisibility(board.getVisibility());
 
         if (board.getAuthor() != null) {
             BoardDetailDto.AuthorDto authorDto = new BoardDetailDto.AuthorDto();
