@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import pawparazzi.back.board.entity.BoardVisibility;
+
 import java.util.List;
 
 @Getter
@@ -16,9 +18,12 @@ public class BoardUpdateRequestDto {
     @NotBlank
     private String title;
 
+    private BoardVisibility visibility;
+
     private String titleImage;
 
     private List<ContentDto> contents;
+
 
     @Getter
     @Setter

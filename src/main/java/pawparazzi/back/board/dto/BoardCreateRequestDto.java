@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import pawparazzi.back.board.entity.BoardVisibility;
+
 import java.util.List;
 
 @Getter
@@ -15,11 +17,15 @@ public class BoardCreateRequestDto {
     @NotBlank(message = "제목은 필수 입력값입니다.")
     private String title;
 
+    @NotBlank
+    private BoardVisibility visibility;
+
     private List<ContentDto> contents;
 
     private String titleImage;
 
     private String titleContent;
+
 
     @Getter
     @Setter
