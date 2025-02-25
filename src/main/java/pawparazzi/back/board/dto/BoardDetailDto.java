@@ -9,6 +9,7 @@ import java.util.List;
 
 @Getter
 @Setter
+// 게시물 상세 조회
 public class BoardDetailDto {
 
     private Long id;

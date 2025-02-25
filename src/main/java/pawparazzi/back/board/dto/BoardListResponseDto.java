@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
+// 게시물 전체 목록 조회
 public class BoardListResponseDto {
 
     private Long id;

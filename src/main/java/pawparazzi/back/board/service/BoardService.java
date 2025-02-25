@@ -1,11 +1,13 @@
 package pawparazzi.back.board.service;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pawparazzi.back.board.dto.BoardCreateRequestDto;
 import pawparazzi.back.board.dto.BoardListResponseDto;
 import pawparazzi.back.board.dto.BoardDetailDto;
+import pawparazzi.back.board.dto.BoardUpdateRequestDto;
 import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.board.entity.BoardDocument;
 import pawparazzi.back.board.repository.BoardRepository;
@@ -26,6 +28,9 @@ public class BoardService {
     private final MemberRepository memberRepository;
     private final JwtUtil jwtUtil;
 
+    /**
+     * 게시물 등록
+     */
     @Transactional
     public BoardDetailDto createBoard(BoardCreateRequestDto requestDto, String token) {
         Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
@@ -37,26 +42,66 @@ public class BoardService {
                 .map(dto -> new BoardDocument.ContentDto(dto.getType(), dto.getValue()))
                 .collect(Collectors.toList());
 
+        String titleImage = requestDto.getTitleImage();
+
+        if (titleImage == null || titleImage.isBlank()) {
+            titleImage = contents.stream()
+                    .filter(c -> "image".equals(c.getType()))
+                    .map(BoardDocument.ContentDto::getValue)
+                    .findFirst()
+                    .orElse(null);
+        }
+
         String firstText = contents.stream()
                 .filter(c -> "text".equals(c.getType()))
                 .map(BoardDocument.ContentDto::getValue)
                 .findFirst()
                 .orElse(null);
 
-        String firstImage = contents.stream()
-                .filter(c -> "image".equals(c.getType()))
-                .map(BoardDocument.ContentDto::getValue)
-                .findFirst()
-                .orElse(null);
-
-        BoardDocument boardDocument = new BoardDocument(null, requestDto.getTitle(), firstImage, firstText, contents);
+        BoardDocument boardDocument = new BoardDocument(null, requestDto.getTitle(), titleImage, firstText, contents);
         boardMongoRepository.save(boardDocument);
-
 
         Board board = new Board(member, boardDocument.getId());
         boardRepository.save(board);
 
         boardDocument.setMysqlId(board.getId());
+        boardMongoRepository.save(boardDocument);
+
+        return convertToBoardDetailDto(board, boardDocument);
+    }
+    /**
+     * 게시물 수정
+     */
+    @Transactional
+    public BoardDetailDto updateBoard(Long boardId, String token, BoardUpdateRequestDto requestDto) {
+        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new EntityNotFoundException("게시물을 찾을 수 없습니다."));
+
+        if (!board.getAuthor().getId().equals(userId)) {
+            throw new IllegalArgumentException("게시물 수정 권한이 없습니다.");
+        }
+
+        BoardDocument boardDocument = boardMongoRepository.findByMysqlId(boardId)
+                .orElseThrow(() -> new EntityNotFoundException("MongoDB에서 해당 게시글을 찾을 수 없습니다."));
+
+        boardDocument.setTitle(requestDto.getTitle());
+        boardDocument.setTitleImage(requestDto.getTitleImage());
+
+        List<BoardDocument.ContentDto> updatedContents = requestDto.getContents().stream()
+                .map(dto -> new BoardDocument.ContentDto(dto.getType(), dto.getValue()))
+                .collect(Collectors.toList());
+
+        boardDocument.setContents(updatedContents);
+
+        String firstText = updatedContents.stream()
+                .filter(c -> "text".equals(c.getType()))
+                .map(BoardDocument.ContentDto::getValue)
+                .findFirst()
+                .orElse(null);
+        boardDocument.setTitleContent(firstText);
+
         boardMongoRepository.save(boardDocument);
 
         return convertToBoardDetailDto(board, boardDocument);
@@ -77,6 +122,9 @@ public class BoardService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 게시물 전체 조회
+     */
     @Transactional(readOnly = true)
     public List<BoardListResponseDto> getBoardList() {
         List<Board> boards = boardRepository.findAll();
@@ -111,6 +159,9 @@ public class BoardService {
         return dto;
     }
 
+    /**
+     * 게시물 상세 조회
+     */
     @Transactional(readOnly = true)
     public BoardDetailDto getBoardDetail(Long boardId) {
         Board board = boardRepository.findById(boardId)
