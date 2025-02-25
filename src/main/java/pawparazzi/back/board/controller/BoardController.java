@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import pawparazzi.back.board.dto.BoardCreateRequestDto;
 import pawparazzi.back.board.dto.BoardListResponseDto;
 import pawparazzi.back.board.dto.BoardDetailDto;
+import pawparazzi.back.board.dto.BoardUpdateRequestDto;
 import pawparazzi.back.board.service.BoardService;
 
 import java.util.List;
@@ -47,6 +48,19 @@ public class BoardController {
     }
 
     /**
+     * 게시물 수정
+     */
+    @PutMapping("/{boardId}")
+    public ResponseEntity<BoardDetailDto> updateBoard(
+            @PathVariable Long boardId,
+            @RequestHeader("Authorization") String token,
+            @RequestBody BoardUpdateRequestDto requestDto) {
+
+        BoardDetailDto updatedBoard = boardService.updateBoard(boardId, token, requestDto);
+        return ResponseEntity.ok(updatedBoard);
+    }
+
+    /**
      * 특정 회원의 게시물 조회 API
      */
     @GetMapping("/member/{memberId}")
@@ -54,6 +68,7 @@ public class BoardController {
         List<BoardListResponseDto> response = boardService.getBoardsByMember(memberId);
         return ResponseEntity.ok(response);
     }
+
 
     /**
      * 게시물 삭제 API

@@ -9,17 +9,16 @@ import java.util.List;
 
 @Getter
 @Setter
-// 게시물 생성 RequestDto
-public class BoardCreateRequestDto {
-
-    @NotBlank(message = "제목은 필수 입력값입니다.")
+@NoArgsConstructor
+@AllArgsConstructor
+// 게시물 수정 RequestDto
+public class BoardUpdateRequestDto {
+    @NotBlank
     private String title;
-
-    private List<ContentDto> contents;
 
     private String titleImage;
 
-    private String titleContent;
+    private List<ContentDto> contents;
 
     @Getter
     @Setter
