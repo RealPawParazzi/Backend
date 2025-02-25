@@ -6,6 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import pawparazzi.back.board.entity.Board;
+import pawparazzi.back.board.repository.BoardMongoRepository;
+import pawparazzi.back.board.repository.BoardRepository;
 import pawparazzi.back.member.dto.request.LoginRequestDto;
 import pawparazzi.back.member.dto.request.SignUpRequestDto;
 import pawparazzi.back.member.dto.request.UpdateMemberRequestDto;
@@ -14,6 +17,7 @@ import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
 import pawparazzi.back.security.util.JwtUtil;
 
+import java.util.List;
 import java.util.Optional;
 
 
@@ -24,6 +28,8 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final BoardRepository boardRepository;
+    private final BoardMongoRepository boardMongoRepository;
 
     /**
      * 회원가입
@@ -110,6 +116,14 @@ public class MemberService {
     public void deleteMember(Long memberId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new EntityNotFoundException("회원 정보를 찾을 수 없습니다."));
+
+        List<Board> boards = boardRepository.findByAuthor(member);
+
+        for (Board board : boards) {
+            boardMongoRepository.deleteByMysqlId(board.getId());
+        }
+
+        boardRepository.deleteByAuthor(member);
 
         memberRepository.delete(member);
     }
