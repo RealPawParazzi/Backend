@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: ${PAWPARAZZI_DB_URL}
+    username: ${PAWPARAZZI_DB_USERNAME}
+    password: ${PAWPARAZZI_DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  logging:
+    level:
+      org.hibernate.SQL: DEBUG
+      org.hibernate.orm.jdbc.bind: TRACE
+
+  data:
+    mongodb:
+      uri: ${PAWPARAZZI_MONGO_URI}
+      database: pawparazzi
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION}
+
+spring.config.import: optional:.env

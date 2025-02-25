@@ -1,23 +1,22 @@
 package pawparazzi.back.member.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.*;
+import pawparazzi.back.pet.entity.Pet;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
+@Table(name = "member")
 @Getter
-@Setter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
+@AllArgsConstructor
 public class Member {
 
     @Id
-    @GeneratedValue
-    private Long userId;
-
-    @Column(nullable = false, unique = true)
-    private String name;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(nullable = false, unique = true)
     private String email;
@@ -25,13 +24,29 @@ public class Member {
     @Column(nullable = false)
     private String password;
 
-    private String userImg;
+    @Column(nullable = false, unique = true)
+    private String nickName;
 
-    @Builder
-    public Member(String name, String email, String password, String userImg) {
-        this.name = name;
+    @Column
+    private String name;
+
+    @Column
+    private String profileImageUrl;
+
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Pet> pets = new ArrayList<>();
+
+    public Member(String email, String password, String nickName, String profileImageUrl, String name) {
         this.email = email;
         this.password = password;
-        this.userImg = userImg;
+        this.nickName = nickName;
+        this.profileImageUrl = profileImageUrl;
+        this.name = name;
+    }
+
+    //연관관계 메서드
+    public void addPet(Pet pet) {
+        pets.add(pet);
+        pet.setMember(this);
     }
 }

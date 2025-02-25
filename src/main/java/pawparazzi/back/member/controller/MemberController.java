@@ -2,54 +2,56 @@ package pawparazzi.back.member.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import pawparazzi.back.member.dto.MemberLoginDto;
-import pawparazzi.back.member.dto.MemberRegisterDto;
-import pawparazzi.back.member.exception.DuplicatedMemberException;
+import pawparazzi.back.member.dto.request.LoginRequestDto;
+import pawparazzi.back.member.dto.request.SignUpRequestDto;
+import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.service.MemberService;
+import pawparazzi.back.security.util.JwtUtil;
 
 import java.util.Map;
 
 @RestController
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-@RequestMapping("/members")
 public class MemberController {
 
+    private final JwtUtil jwtUtil;
     private final MemberService memberService;
 
-    @PostMapping("/register")
-    public ResponseEntity<?> registerMember(@RequestBody @Valid MemberRegisterDto registerDto) {
-        try{
-            memberService.registerUser(registerDto);
-            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "회원 가입 성공"));
-        } catch(DuplicatedMemberException e){
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", e.getMessage()));
-        }
+    // 회원가입
+    @PostMapping("/signup")
+    public ResponseEntity<String> registerUser(@Valid @RequestBody SignUpRequestDto request) {
+        memberService.registerUser(request);
+        return ResponseEntity.ok("회원가입 성공");
     }
 
-    //추후 메소드 수정 필요
+    // 로그인 (JWT 발급)
     @PostMapping("/login")
-    public ResponseEntity<?> loginMember(@RequestBody @Valid MemberLoginDto loginDto) {
-        try{
-            String token = memberService.login(loginDto);
-            return ResponseEntity.ok(Map.of("token", token));
-        } catch(IllegalArgumentException e){
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", e.getMessage()));
+    public ResponseEntity<Map<String, String>> login(@Valid @RequestBody LoginRequestDto request) {
+        String token = memberService.login(request);
+        return ResponseEntity.ok(Map.of("token", token));
+    }
+
+    // 토큰 검증
+    @GetMapping("/validate")
+    public ResponseEntity<String> validateToken(@RequestHeader("Authorization") String token) {
+        token = token.replace("Bearer ", "");
+
+        if (jwtUtil.validateToken(token)) {
+            return ResponseEntity.ok("토큰이 유효합니다.");
+        } else {
+            return ResponseEntity.status(401).body("유효하지 않은 토큰입니다.");
         }
     }
 
-    //추후 메소드 수정 필요
-    @PostMapping("/logout")
-    public ResponseEntity<?> logout(@RequestHeader("Authorization") String token) {
-        memberService.logout(token);
-        return ResponseEntity.ok(Map.of("message", "로그아웃 성공"));
-    }
-
-    @DeleteMapping("/{memberId}")
-    public ResponseEntity<?> deleteMember(@PathVariable Long memberId) {
-        memberService.deleteMember(memberId);
-        return ResponseEntity.ok(Map.of("message", "회원이 성공적으로 삭제되었습니다."));
+    // 현재 로그인한 사용자 정보 조회
+    @GetMapping("/me")
+    public ResponseEntity<Member> getCurrentUser(@RequestHeader("Authorization") String token) {
+        token = token.replace("Bearer ", "");
+        Long memberId = jwtUtil.extractMemberId(token);
+        Member member = memberService.findById(memberId);
+        return ResponseEntity.ok(member);
     }
 }
