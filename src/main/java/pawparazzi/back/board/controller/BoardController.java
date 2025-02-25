@@ -45,4 +45,26 @@ public class BoardController {
         List<BoardListResponseDto> response = boardService.getBoardList();
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * 특정 회원의 게시물 조회 API
+     */
+    @GetMapping("/member/{memberId}")
+    public ResponseEntity<List<BoardListResponseDto>> getBoardsByMember(@PathVariable Long memberId) {
+        List<BoardListResponseDto> response = boardService.getBoardsByMember(memberId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 게시물 삭제 API
+     */
+    @DeleteMapping("/{boardId}")
+    public ResponseEntity<String> deleteBoard(
+            @PathVariable Long boardId,
+            @RequestHeader("Authorization") String token) {
+
+        boardService.deleteBoard(boardId, token);
+        return ResponseEntity.ok("게시물이 삭제되었습니다.");
+    }
+
 }
