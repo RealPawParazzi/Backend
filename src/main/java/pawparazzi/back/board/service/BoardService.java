@@ -62,6 +62,21 @@ public class BoardService {
         return convertToBoardDetailDto(board, boardDocument);
     }
 
+    /**
+     * 특정 회원의 게시물 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BoardListResponseDto> getBoardsByMember(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다."));
+
+        List<Board> boards = boardRepository.findByAuthor(member);
+
+        return boards.stream()
+                .map(this::convertToBoardListResponseDto)
+                .collect(Collectors.toList());
+    }
+
     @Transactional(readOnly = true)
     public List<BoardListResponseDto> getBoardList() {
         List<Board> boards = boardRepository.findAll();
@@ -132,5 +147,23 @@ public class BoardService {
                 .collect(Collectors.toList()));
 
         return dto;
+    }
+
+    /**
+     * 게시물 삭제
+     */
+    @Transactional
+    public void deleteBoard(Long boardId, String token) {
+        Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시물을 찾을 수 없습니다."));
+
+        if (!board.getAuthor().getId().equals(memberId)) {
+            throw new IllegalArgumentException("본인이 작성한 게시물만 삭제할 수 있습니다.");
+        }
+
+        boardMongoRepository.deleteByMysqlId(board.getId());
+        boardRepository.delete(board);
     }
 }
