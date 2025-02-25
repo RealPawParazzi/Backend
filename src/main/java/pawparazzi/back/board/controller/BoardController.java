@@ -61,7 +61,7 @@ public class BoardController {
     }
 
     /**
-     * 특정 회원의 게시물 조회 API
+     * 특정 회원의 게시물 조회
      */
     @GetMapping("/member/{memberId}")
     public ResponseEntity<List<BoardListResponseDto>> getBoardsByMember(@PathVariable Long memberId) {

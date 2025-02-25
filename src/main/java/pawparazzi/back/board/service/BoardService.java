@@ -60,7 +60,7 @@ public class BoardService {
                 .orElse(null);
 
         if (requestDto.getVisibility() == null) {
-            throw new IllegalArgumentException("게시물 공개 설정(visibility)은 필수 입력값입니다.");
+            throw new IllegalArgumentException("게시물 공개 설정은 필수 입력값입니다.");
         }
 
         BoardDocument boardDocument = new BoardDocument(null, requestDto.getTitle(), titleImage, firstText, contents);
@@ -75,9 +75,6 @@ public class BoardService {
         return convertToBoardDetailDto(board, boardDocument);
     }
 
-    /**
-     * 게시물 수정
-     */
     /**
      * 게시물 수정
      */
@@ -141,6 +138,7 @@ public class BoardService {
         List<Board> boards = boardRepository.findByAuthor(member);
 
         return boards.stream()
+                .filter(board -> board.getVisibility() == BoardVisibility.PUBLIC)
                 .map(this::convertToBoardListResponseDto)
                 .collect(Collectors.toList());
     }
@@ -153,6 +151,7 @@ public class BoardService {
         List<Board> boards = boardRepository.findAll();
 
         return boards.stream()
+                .filter(board -> board.getVisibility() == BoardVisibility.PUBLIC)
                 .map(this::convertToBoardListResponseDto)
                 .collect(Collectors.toList());
     }
@@ -170,6 +169,7 @@ public class BoardService {
         dto.setFavoriteCount(board.getFavoriteCount());
         dto.setCommentCount(board.getCommentCount());
         dto.setViewCount(board.getViewCount());
+        dto.setVisibility(board.getVisibility());
 
         if (board.getAuthor() != null) {
             BoardListResponseDto.AuthorDto authorDto = new BoardListResponseDto.AuthorDto();
@@ -206,6 +206,7 @@ public class BoardService {
         dto.setFavoriteCount(board.getFavoriteCount());
         dto.setCommentCount(board.getCommentCount());
         dto.setViewCount(board.getViewCount());
+        dto.setVisibility(board.getVisibility());
 
         if (board.getAuthor() != null) {
             BoardDetailDto.AuthorDto authorDto = new BoardDetailDto.AuthorDto();
