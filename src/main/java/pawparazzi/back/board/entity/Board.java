@@ -41,6 +41,16 @@ public class Board {
     @Column(nullable = false)
     private LocalDateTime writeDatetime = LocalDateTime.now().withNano(0);;
 
+    public void increaseFavoriteCount() {
+        this.favoriteCount++;
+    }
+
+    public void decreaseFavoriteCount() {
+        if (this.favoriteCount > 0) {
+            this.favoriteCount--;
+        }
+    }
+
     public Board(Member author, String mongoId, BoardVisibility visibility) {
         this.author = author;
         this.mongoId = mongoId;
