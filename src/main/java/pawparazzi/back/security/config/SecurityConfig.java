@@ -38,6 +38,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/boards/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/boards/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/likes/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/likes/**").permitAll()
                         .anyRequest().authenticated())  // 나머지는 인증 필요
                 .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userDetailsService),
                         UsernamePasswordAuthenticationFilter.class);

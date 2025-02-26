@@ -25,6 +25,10 @@ public class Board {
     @JoinColumn(name = "member_id", nullable = false)
     private Member author;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private BoardVisibility visibility;
+
     @Column(nullable = false)
     private int favoriteCount = 0;
 
@@ -37,8 +41,19 @@ public class Board {
     @Column(nullable = false)
     private LocalDateTime writeDatetime = LocalDateTime.now().withNano(0);;
 
-    public Board(Member author, String mongoId) {
+    public void increaseFavoriteCount() {
+        this.favoriteCount++;
+    }
+
+    public void decreaseFavoriteCount() {
+        if (this.favoriteCount > 0) {
+            this.favoriteCount--;
+        }
+    }
+
+    public Board(Member author, String mongoId, BoardVisibility visibility) {
         this.author = author;
         this.mongoId = mongoId;
+        this.visibility = visibility != null ? visibility : BoardVisibility.PUBLIC;
     }
 }

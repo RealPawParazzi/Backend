@@ -30,6 +30,7 @@ public class BoardDocument {
 
     private List<ContentDto> contents;
 
+
     @Getter
     @Setter
     @NoArgsConstructor
