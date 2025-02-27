@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/pets")
+@RequestMapping("/api/pets")
 @RequiredArgsConstructor
 public class PetController {
 
@@ -23,18 +23,26 @@ public class PetController {
     private final MemberService memberService;
 
     //펫 등록
-    @PostMapping("/{userId}/register")
-    public ResponseEntity<PetResponseDto> registerPet(@PathVariable Long userId,
-                                                      @RequestBody PetRegisterRequestDto registerDto){
-        Member member = memberService.findById(userId);
-        Pet pet = petService.registerPet(member, registerDto);
+    @PostMapping("/register")
+    public ResponseEntity<PetResponseDto> registerPet(
+            @RequestHeader ("Authorization") String token,
+            @RequestBody PetRegisterRequestDto registerDto){
+
+        Pet pet = petService.registerPet(registerDto, token);
+
+        if(pet.getMember() != null) {
+            pet.getMember().getNickName();
+            pet.getMember().getEmail();
+        }
         return ResponseEntity.ok(new PetResponseDto(pet));
     }
 
     //회원별 전체 펫 조회
-    @GetMapping("/{userId}/all")
-    public ResponseEntity<List<PetResponseDto>> petList(@PathVariable Long userId){
-        List<Pet> pets = petService.getPetsByMember(userId);
+    @GetMapping("/all")
+    public ResponseEntity<List<PetResponseDto>> petList(
+            @RequestHeader("Authorization") String token
+    ){
+        List<Pet> pets = petService.getPetsByMember(token);
         List<PetResponseDto> response = pets.stream()
                 .map(PetResponseDto::new)
                 .toList();
@@ -44,22 +52,31 @@ public class PetController {
 
     //펫 상세조회
     @GetMapping("/{petId}")
-    public ResponseEntity<PetResponseDto> getPet(@PathVariable Long petId){
-        Pet pet = petService.getPetById(petId);
+    public ResponseEntity<PetResponseDto> getPet(
+            @PathVariable Long petId,
+            @RequestHeader("Authorization") String token){
+
+        Pet pet = petService.getPetById(token, petId);
         return ResponseEntity.ok(new PetResponseDto(pet));
     }
 
     //반려동물 정보 수정
     @PutMapping("/{petId}")
-    public ResponseEntity<PetResponseDto> updatePet(@PathVariable Long petId, @RequestBody PetUpdateDto updateDto){
-        Pet updatedPet = petService.updatePet(petId, updateDto);
+    public ResponseEntity<PetResponseDto> updatePet(
+            @PathVariable Long petId,
+            @RequestBody PetUpdateDto updateDto,
+            @RequestHeader("Authorization") String token
+    ){
+        Pet updatedPet = petService.updatePet(petId, updateDto, token);
         return ResponseEntity.ok(new PetResponseDto(updatedPet));
     }
 
     //반려동물 삭제
     @DeleteMapping("/{petId}")
-    public ResponseEntity<Void> deletePet(@PathVariable Long petId){
-        petService.deletePet(petId);
+    public ResponseEntity<Void> deletePet(
+            @PathVariable Long petId,
+            @RequestHeader("Authorization") String token){
+        petService.deletePet(petId, token);
         return ResponseEntity.noContent().build();
     }
 
