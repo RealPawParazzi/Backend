@@ -13,4 +13,7 @@ public interface PetRepository extends JpaRepository<Pet, Long> {
     List<Pet> findByMemberId(Long id);
 
     boolean existsByName(String name);
+
+    @Query("SELECT p FROM Pet p JOIN FETCH p.member WHERE p.member.id = :userId")
+    List<Pet> findPetsWithMemberByUserId(Long userId);
 }

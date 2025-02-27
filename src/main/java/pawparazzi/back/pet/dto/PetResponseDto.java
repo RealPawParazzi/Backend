@@ -28,7 +28,8 @@ public class PetResponseDto {
         this.member = new MemberInfo(pet.getMember().getNickName(), pet.getMember().getEmail());
     }
 
-    @Data
+    @Getter
+    @Setter
     public static class MemberInfo {
         private String name;
         private String email;
