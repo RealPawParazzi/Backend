@@ -8,6 +8,7 @@ import pawparazzi.back.board.dto.BoardListResponseDto;
 import pawparazzi.back.board.dto.BoardDetailDto;
 import pawparazzi.back.board.dto.BoardUpdateRequestDto;
 import pawparazzi.back.board.service.BoardService;
+import pawparazzi.back.security.util.JwtUtil;
 
 import java.util.List;
 
@@ -17,6 +18,7 @@ import java.util.List;
 public class BoardController {
 
     private final BoardService boardService;
+    private final JwtUtil jwtUtil;
 
     /**
      * 게시글 등록
@@ -25,7 +27,9 @@ public class BoardController {
     public ResponseEntity<BoardDetailDto> createBoard(
             @RequestHeader("Authorization") String token,
             @RequestBody BoardCreateRequestDto requestDto) {
-        BoardDetailDto response = boardService.createBoard(requestDto, token);
+
+        Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        BoardDetailDto response = boardService.createBoard(requestDto, memberId);
         return ResponseEntity.ok(response);
     }
 
@@ -56,7 +60,8 @@ public class BoardController {
             @RequestHeader("Authorization") String token,
             @RequestBody BoardUpdateRequestDto requestDto) {
 
-        BoardDetailDto updatedBoard = boardService.updateBoard(boardId, token, requestDto);
+        Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        BoardDetailDto updatedBoard = boardService.updateBoard(boardId, memberId, requestDto);
         return ResponseEntity.ok(updatedBoard);
     }
 
@@ -69,7 +74,6 @@ public class BoardController {
         return ResponseEntity.ok(response);
     }
 
-
     /**
      * 게시물 삭제
      */
@@ -78,8 +82,8 @@ public class BoardController {
             @PathVariable Long boardId,
             @RequestHeader("Authorization") String token) {
 
-        boardService.deleteBoard(boardId, token);
+        Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        boardService.deleteBoard(boardId, memberId);
         return ResponseEntity.ok("게시물이 삭제되었습니다.");
     }
-
 }
