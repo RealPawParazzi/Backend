@@ -1,20 +1,22 @@
 package pawparazzi.back.follow.dto;
 
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 팔로우시 반환하는 DTO
+ * follow 메서드에서 사용
+ */
 @Getter
 @Setter
-@NoArgsConstructor
 public class FollowResponseDto {
-    private Long id;
     private Long followerId;
     private Long followingId;
-
-    public FollowResponseDto(Long id, Long followerId, Long followingId){
-        this.id = id;
-        this.followerId = followerId;
-        this.followingId = followingId;
-    }
+    private String followerNickName;
+    private String followingNickName;
+    private String followerProfileImageUrl;
+    private String followingProfileImageUrl;
+    private int followerCount;
+    private int followingCount;
+    private boolean followedStatus;
 }

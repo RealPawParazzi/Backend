@@ -1,8 +1,12 @@
 package pawparazzi.back.member.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import pawparazzi.back.board.entity.Board;
+import pawparazzi.back.follow.entity.Follow;
 import pawparazzi.back.pet.entity.Pet;
 
 import java.util.ArrayList;
@@ -40,6 +44,12 @@ public class Member {
 
     @OneToMany(mappedBy = "author", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<Board> boards = new ArrayList<>();
+
+    @OneToMany(mappedBy = "following", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Follow> followerList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "follower", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Follow> followingList = new ArrayList<>();
 
     public Member(String email, String password, String nickName, String profileImageUrl, String name) {
         this.email = email;
