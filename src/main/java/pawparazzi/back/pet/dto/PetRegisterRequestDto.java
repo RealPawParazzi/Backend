@@ -1,6 +1,7 @@
 package pawparazzi.back.pet.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import pawparazzi.back.pet.entity.Pet;
@@ -15,19 +16,11 @@ public class PetRegisterRequestDto {
     @NotBlank
     private String name;
 
-    @NotBlank
+    @NotNull
     private Type type;
 
-    @NotBlank
+    @NotNull
     private LocalDate birthDate;
 
     private String petImg;
-
-    public Pet toPet() {
-        return Pet.builder()
-                .name(name)
-                .type(type)
-                .birthDate(birthDate)
-                .petImg(petImg).build();
-    }
 }
