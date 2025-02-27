@@ -4,7 +4,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pawparazzi.back.follow.dto.FollowRequestDto;
 import pawparazzi.back.follow.dto.FollowResponseDto;
 import pawparazzi.back.follow.dto.FollowerResponseDto;
 import pawparazzi.back.follow.dto.FollowingResponseDto;
@@ -15,7 +14,6 @@ import pawparazzi.back.member.repository.MemberRepository;
 import pawparazzi.back.security.util.JwtUtil;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,7 +23,6 @@ public class FollowService {
     private final MemberRepository memberRepository;
     private final JwtUtil jwtUtil;
 
-    //특정 회원을 조회했을 때 팔로우 여부 확인
     @Transactional
     public FollowResponseDto follow(String targetNickName, String token) {
         Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
@@ -46,9 +43,10 @@ public class FollowService {
 
         Follow follow = new Follow(member, following);
         followRepository.save(follow);
+        int followerCount = followRepository.countByFollower(member);
+        int followingCount = followRepository.countByFollowing(member);
 
-        FollowResponseDto dto = getFollowResponseDto(member, following);
-        dto.setFollowingCount(dto.getFollowingCount() + 1);
+        FollowResponseDto dto = getFollowResponseDto(member, following, followerCount, followingCount);
         dto.setFollowedStatus(true);
         return dto;
     }
@@ -103,7 +101,7 @@ public class FollowService {
     }
 
     @NotNull
-    private static FollowResponseDto getFollowResponseDto(Member member, Member following) {
+    private static FollowResponseDto getFollowResponseDto(Member member, Member following, int followerCount, int followingCount) {
         FollowResponseDto responseDto = new FollowResponseDto();
         responseDto.setFollowerId(member.getId());
         responseDto.setFollowingId(following.getId());
@@ -111,8 +109,8 @@ public class FollowService {
         responseDto.setFollowingNickName(following.getNickName());
         responseDto.setFollowerProfileImageUrl(member.getProfileImageUrl());
         responseDto.setFollowingProfileImageUrl(following.getProfileImageUrl());
-        responseDto.setFollowerCount(member.getFollowerList().size());
-        responseDto.setFollowingCount(member.getFollowingList().size());
+        responseDto.setFollowerCount(followerCount);
+        responseDto.setFollowingCount(followingCount);
         return responseDto;
     }
 
