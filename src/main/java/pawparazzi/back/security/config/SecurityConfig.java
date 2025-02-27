@@ -35,11 +35,18 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // 인증 없이 접근 가능한 API
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/boards/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/likes/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/comments/**").permitAll()
+
+                        // 인증이 필요한 API
                         .requestMatchers(HttpMethod.POST, "/api/v1/boards/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/likes/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/likes/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/comments/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/comments/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/comments/**").authenticated()
                         .anyRequest().authenticated())  // 나머지는 인증 필요
                 .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userDetailsService),
                         UsernamePasswordAuthenticationFilter.class);

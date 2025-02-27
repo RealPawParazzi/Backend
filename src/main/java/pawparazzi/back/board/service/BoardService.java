@@ -1,7 +1,6 @@
 package pawparazzi.back.board.service;
 
 import jakarta.persistence.EntityNotFoundException;
-import kotlin.reflect.KVisibility;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +15,6 @@ import pawparazzi.back.board.repository.BoardRepository;
 import pawparazzi.back.board.repository.BoardMongoRepository;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
-import pawparazzi.back.security.util.JwtUtil;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,15 +26,12 @@ public class BoardService {
     private final BoardRepository boardRepository;
     private final BoardMongoRepository boardMongoRepository;
     private final MemberRepository memberRepository;
-    private final JwtUtil jwtUtil;
 
     /**
      * 게시물 등록
      */
     @Transactional
-    public BoardDetailDto createBoard(BoardCreateRequestDto requestDto, String token) {
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-
+    public BoardDetailDto createBoard(BoardCreateRequestDto requestDto, Long userId) {
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
@@ -63,12 +58,15 @@ public class BoardService {
             throw new IllegalArgumentException("게시물 공개 설정은 필수 입력값입니다.");
         }
 
+        // MongoDB에 게시물 저장
         BoardDocument boardDocument = new BoardDocument(null, requestDto.getTitle(), titleImage, firstText, contents);
         boardMongoRepository.save(boardDocument);
 
+        // MySQL에 게시물 저장
         Board board = new Board(member, boardDocument.getId(), requestDto.getVisibility());
         boardRepository.save(board);
 
+        // MongoDB에 MySQL ID 업데이트
         boardDocument.setMysqlId(board.getId());
         boardMongoRepository.save(boardDocument);
 
@@ -79,9 +77,7 @@ public class BoardService {
      * 게시물 수정
      */
     @Transactional
-    public BoardDetailDto updateBoard(Long boardId, String token, BoardUpdateRequestDto requestDto) {
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-
+    public BoardDetailDto updateBoard(Long boardId, Long userId, BoardUpdateRequestDto requestDto) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new EntityNotFoundException("게시물을 찾을 수 없습니다."));
 
@@ -92,7 +88,6 @@ public class BoardService {
         BoardDocument boardDocument = boardMongoRepository.findByMysqlId(boardId)
                 .orElseThrow(() -> new EntityNotFoundException("MongoDB에서 해당 게시글을 찾을 수 없습니다."));
 
-        // 수정할 데이터만 업데이트 (null 값이면 기존 데이터 유지)
         if (requestDto.getTitle() != null && !requestDto.getTitle().isBlank()) {
             boardDocument.setTitle(requestDto.getTitle());
         }
@@ -107,7 +102,6 @@ public class BoardService {
                     .collect(Collectors.toList());
             boardDocument.setContents(updatedContents);
 
-            // 첫 번째 텍스트를 자동으로 `titleContent`에 반영
             String firstText = updatedContents.stream()
                     .filter(c -> "text".equals(c.getType()))
                     .map(BoardDocument.ContentDto::getValue)
@@ -120,9 +114,9 @@ public class BoardService {
             board.setVisibility(requestDto.getVisibility());
         }
 
-        // MongoDB 업데이트
+        // MongoDB , MySQL 업데이트
         boardMongoRepository.save(boardDocument);
-        boardRepository.save(board); // MySQL도 업데이트 반영
+        boardRepository.save(board);
 
         return convertToBoardDetailDto(board, boardDocument);
     }
@@ -224,20 +218,20 @@ public class BoardService {
         return dto;
     }
 
+
     /**
      * 게시물 삭제
      */
     @Transactional
-    public void deleteBoard(Long boardId, String token) {
-        Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-
+    public void deleteBoard(Long boardId, Long userId) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시물을 찾을 수 없습니다."));
 
-        if (!board.getAuthor().getId().equals(memberId)) {
+        if (!board.getAuthor().getId().equals(userId)) {
             throw new IllegalArgumentException("본인이 작성한 게시물만 삭제할 수 있습니다.");
         }
 
+        // MongoDB & MySQL 삭제
         boardMongoRepository.deleteByMysqlId(board.getId());
         boardRepository.delete(board);
     }
