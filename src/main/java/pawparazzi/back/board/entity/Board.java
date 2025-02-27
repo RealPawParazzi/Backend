@@ -51,6 +51,16 @@ public class Board {
         }
     }
 
+    public void increaseCommentCount() {
+        this.commentCount++;
+    }
+
+    public void decreaseCommentCount() {
+        if (this.commentCount > 0) {
+            this.commentCount--;
+        }
+    }
+
     public Board(Member author, String mongoId, BoardVisibility visibility) {
         this.author = author;
         this.mongoId = mongoId;

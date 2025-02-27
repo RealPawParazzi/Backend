@@ -9,6 +9,7 @@ import pawparazzi.back.board.repository.BoardRepository;
 import pawparazzi.back.comment.dto.CommentRequestDto;
 import pawparazzi.back.comment.dto.CommentResponseDto;
 import pawparazzi.back.comment.dto.CommentResponseDto.MemberDto;
+import pawparazzi.back.comment.dto.CommentResponseWrapperDto;
 import pawparazzi.back.comment.entity.Comment;
 import pawparazzi.back.comment.repository.CommentRepository;
 import pawparazzi.back.member.entity.Member;
@@ -39,6 +40,9 @@ public class CommentService {
         Comment comment = new Comment(board, member, requestDto.getContent());
         commentRepository.save(comment);
 
+        board.increaseCommentCount();
+        boardRepository.save(board);
+
         return convertToDto(comment);
     }
 
@@ -66,7 +70,9 @@ public class CommentService {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new EntityNotFoundException("댓글을 찾을 수 없습니다."));
 
-        Long boardAuthorId = comment.getBoard().getAuthor().getId();
+        Board board = comment.getBoard();
+
+        Long boardAuthorId = board.getAuthor().getId();
         Long commentAuthorId = comment.getMember().getId();
 
         // 댓글 작성자 또는 게시글 작성자만 삭제 가능
@@ -75,20 +81,26 @@ public class CommentService {
         }
 
         commentRepository.delete(comment);
+
+        board.decreaseCommentCount();
+        boardRepository.save(board);
     }
 
     /**
      * 특정 게시글의 댓글 목록 조회
      */
     @Transactional(readOnly = true)
-    public List<CommentResponseDto> getCommentsByBoard(Long boardId) {
-        List<Comment> comments = commentRepository.findByBoardOrderByCreatedAtAsc(
-                boardRepository.findById(boardId).orElseThrow(() -> new EntityNotFoundException("게시글을 찾을 수 없습니다."))
-        );
+    public CommentResponseWrapperDto getCommentsByBoard(Long boardId) {
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new EntityNotFoundException("게시글을 찾을 수 없습니다."));
 
-        return comments.stream()
+        List<Comment> comments = commentRepository.findByBoardOrderByCreatedAtAsc(board);
+
+        List<CommentResponseDto> commentDto = comments.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
+
+        return new CommentResponseWrapperDto(board.getId(), board.getCommentCount(), commentDto);
     }
 
     /**
@@ -97,7 +109,7 @@ public class CommentService {
     private CommentResponseDto convertToDto(Comment comment) {
         return CommentResponseDto.builder()
                 .commentId(comment.getId())
-                .commentMember(new MemberDto(
+                .commentMember(new CommentResponseDto.MemberDto(
                         comment.getMember().getId(),
                         comment.getMember().getNickName(),
                         comment.getMember().getProfileImageUrl()

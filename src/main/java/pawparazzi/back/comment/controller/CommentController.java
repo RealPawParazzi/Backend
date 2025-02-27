@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pawparazzi.back.comment.dto.CommentRequestDto;
 import pawparazzi.back.comment.dto.CommentResponseDto;
+import pawparazzi.back.comment.dto.CommentResponseWrapperDto;
 import pawparazzi.back.comment.service.CommentService;
 import pawparazzi.back.security.util.JwtUtil;
 
@@ -67,7 +68,7 @@ public class CommentController {
      * 특정 게시글의 댓글 목록 조회
      */
     @GetMapping("/{boardId}")
-    public ResponseEntity<List<CommentResponseDto>> getComments(@PathVariable Long boardId) {
+    public ResponseEntity<CommentResponseWrapperDto> getComments(@PathVariable Long boardId) {
         return ResponseEntity.ok(commentService.getCommentsByBoard(boardId));
     }
 }
