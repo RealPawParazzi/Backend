@@ -4,13 +4,15 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import pawparazzi.back.comment.dto.CommentRequestDto;
-import pawparazzi.back.comment.dto.CommentResponseDto;
-import pawparazzi.back.comment.dto.CommentResponseWrapperDto;
+import pawparazzi.back.comment.dto.request.CommentRequestDto;
+import pawparazzi.back.comment.dto.response.CommentLikeResponseDto;
+import pawparazzi.back.comment.dto.response.CommentLikesResponseDto;
+import pawparazzi.back.comment.dto.response.CommentResponseDto;
+import pawparazzi.back.comment.dto.response.CommentListResponseDto;
+import pawparazzi.back.comment.service.CommentLikeService;
 import pawparazzi.back.comment.service.CommentService;
 import pawparazzi.back.security.util.JwtUtil;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -19,6 +21,7 @@ import java.util.Map;
 public class CommentController {
 
     private final CommentService commentService;
+    private final CommentLikeService commentLikeService;
     private final JwtUtil jwtUtil;
 
     /**
@@ -68,7 +71,29 @@ public class CommentController {
      * 특정 게시글의 댓글 목록 조회
      */
     @GetMapping("/{boardId}")
-    public ResponseEntity<CommentResponseWrapperDto> getComments(@PathVariable Long boardId) {
+    public ResponseEntity<CommentListResponseDto> getComments(@PathVariable Long boardId) {
         return ResponseEntity.ok(commentService.getCommentsByBoard(boardId));
+    }
+
+    /**
+     * 댓글 좋아요 등록/삭제 (토글)
+     */
+    @PostMapping("/{commentId}/like")
+    public ResponseEntity<CommentLikeResponseDto> toggleCommentLike(
+            @PathVariable Long commentId,
+            @RequestHeader("Authorization") String token) {
+
+        Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        CommentLikeResponseDto response = commentLikeService.toggleCommentLike(commentId, memberId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 특정 댓글에 좋아요를 누른 회원 목록 조회
+     */
+    @GetMapping("/{commentId}/likes")
+    public ResponseEntity<CommentLikesResponseDto> getLikedMembersByComment(@PathVariable Long commentId) {
+        return ResponseEntity.ok(commentLikeService.getLikedMembersByComment(commentId));
     }
 }

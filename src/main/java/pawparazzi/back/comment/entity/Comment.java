@@ -29,6 +29,9 @@ public class Comment {
     @Column(nullable = false, length = 500)
     private String content;
 
+    @Column(nullable = false)
+    private int likeCount = 0;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -44,4 +47,15 @@ public class Comment {
         this.content = content;
         this.updatedAt = LocalDateTime.now().withNano(0);;
     }
+
+    public void increaseLikeCount() {
+        this.likeCount++;
+    }
+
+    public void decreaseLikeCount() {
+        if (this.likeCount > 0) {
+            this.likeCount--;
+        }
+    }
+
 }

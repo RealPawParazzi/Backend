@@ -1,4 +1,4 @@
-package pawparazzi.back.comment.dto;
+package pawparazzi.back.comment.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,6 +13,7 @@ public class CommentResponseDto {
     private Long commentId;
     private MemberDto commentMember;
     private String content;
+    private int likeCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

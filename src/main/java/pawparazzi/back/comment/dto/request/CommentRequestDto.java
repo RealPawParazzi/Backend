@@ -1,4 +1,4 @@
-package pawparazzi.back.comment.dto;
+package pawparazzi.back.comment.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -10,8 +10,4 @@ public class CommentRequestDto {
 
     @NotBlank(message = "댓글 내용은 필수 입력값입니다.")
     private String content;
-
-    public CommentRequestDto(String content) {
-        this.content = content;
-    }
 }
