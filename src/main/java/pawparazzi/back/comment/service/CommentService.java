@@ -6,14 +6,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.board.repository.BoardRepository;
-import pawparazzi.back.comment.dto.CommentRequestDto;
-import pawparazzi.back.comment.dto.CommentResponseDto;
-import pawparazzi.back.comment.dto.CommentResponseDto.MemberDto;
-import pawparazzi.back.comment.dto.CommentResponseWrapperDto;
+import pawparazzi.back.comment.dto.request.CommentRequestDto;
+import pawparazzi.back.comment.dto.response.CommentResponseDto;
+import pawparazzi.back.comment.dto.response.CommentListResponseDto;
 import pawparazzi.back.comment.entity.Comment;
 import pawparazzi.back.comment.repository.CommentRepository;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
+
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,6 +25,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final BoardRepository boardRepository;
     private final MemberRepository memberRepository;
+    private final CommentLikeService commentLikeService;
 
 
     /**
@@ -75,14 +76,18 @@ public class CommentService {
         Long boardAuthorId = board.getAuthor().getId();
         Long commentAuthorId = comment.getMember().getId();
 
-        // 댓글 작성자 또는 게시글 작성자만 삭제 가능
         if (!commentAuthorId.equals(memberId) && !boardAuthorId.equals(memberId)) {
             throw new IllegalArgumentException("댓글 삭제 권한이 없습니다.");
         }
 
+        commentLikeService.deleteCommentLikes(commentId);
+
         commentRepository.delete(comment);
 
-        board.decreaseCommentCount();
+        if (board.getCommentCount() > 0) {
+            board.decreaseCommentCount();
+        }
+
         boardRepository.save(board);
     }
 
@@ -90,18 +95,18 @@ public class CommentService {
      * 특정 게시글의 댓글 목록 조회
      */
     @Transactional(readOnly = true)
-    public CommentResponseWrapperDto getCommentsByBoard(Long boardId) {
+    public CommentListResponseDto getCommentsByBoard(Long boardId) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new EntityNotFoundException("게시글을 찾을 수 없습니다."));
 
         List<Comment> comments = commentRepository.findByBoardOrderByCreatedAtAsc(board);
-
-        List<CommentResponseDto> commentDto = comments.stream()
+        List<CommentResponseDto> commentDtos = comments.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
 
-        return new CommentResponseWrapperDto(board.getId(), board.getCommentCount(), commentDto);
+        return new CommentListResponseDto(boardId, comments.size(), commentDtos);
     }
+
 
     /**
      * 엔티티 → DTO 변환
@@ -115,6 +120,7 @@ public class CommentService {
                         comment.getMember().getProfileImageUrl()
                 ))
                 .content(comment.getContent())
+                .likeCount(comment.getLikeCount())
                 .createdAt(comment.getCreatedAt())
                 .updatedAt(comment.getUpdatedAt())
                 .build();
