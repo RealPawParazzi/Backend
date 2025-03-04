@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/boards/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/likes/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/comments/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/replies/**").permitAll()
 
                         // 인증이 필요한 API
                         .requestMatchers(HttpMethod.POST, "/api/v1/boards/**").authenticated()
@@ -47,6 +48,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/comments/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/comments/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/comments/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/replies/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/replies/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/replies/**").authenticated()
+
                         .anyRequest().authenticated())  // 나머지는 인증 필요
                 .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userDetailsService),
                         UsernamePasswordAuthenticationFilter.class);

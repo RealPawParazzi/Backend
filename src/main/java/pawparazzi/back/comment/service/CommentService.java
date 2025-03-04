@@ -121,6 +121,7 @@ public class CommentService {
                 ))
                 .content(comment.getContent())
                 .likeCount(comment.getLikeCount())
+                .replyCount(comment.getReplyCount())
                 .createdAt(comment.getCreatedAt())
                 .updatedAt(comment.getUpdatedAt())
                 .build();
