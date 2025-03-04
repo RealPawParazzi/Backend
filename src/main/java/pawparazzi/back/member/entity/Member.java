@@ -43,6 +43,7 @@ public class Member {
     private List<Pet> pets = new ArrayList<>();
 
     @OneToMany(mappedBy = "author", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    @JsonIgnore
     private List<Board> boards = new ArrayList<>();
 
     @OneToMany(mappedBy = "following", cascade = CascadeType.ALL, orphanRemoval = true)
