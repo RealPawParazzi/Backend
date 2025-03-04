@@ -13,8 +13,10 @@ import pawparazzi.back.board.entity.BoardDocument;
 import pawparazzi.back.board.entity.BoardVisibility;
 import pawparazzi.back.board.repository.BoardRepository;
 import pawparazzi.back.board.repository.BoardMongoRepository;
+import pawparazzi.back.comment.entity.Comment;
 import pawparazzi.back.comment.repository.CommentLikeRepository;
 import pawparazzi.back.comment.repository.CommentRepository;
+import pawparazzi.back.comment.repository.ReplyRepository;
 import pawparazzi.back.likes.repository.LikeRepository;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
@@ -32,6 +34,7 @@ public class BoardService {
     private final CommentRepository commentRepository;
     private final LikeRepository likeRepository;
     private final CommentLikeRepository commentLikeRepository;
+    private final ReplyRepository replyRepository;
 
     /**
      * 게시물 등록
