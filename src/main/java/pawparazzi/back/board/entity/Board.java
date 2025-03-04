@@ -1,5 +1,6 @@
 package pawparazzi.back.board.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -27,6 +28,7 @@ public class Board {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
+    @JsonIgnore
     private Member author;
 
     @Enumerated(EnumType.STRING)
