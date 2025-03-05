@@ -5,10 +5,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pawparazzi.back.comment.dto.request.ReplyRequestDto;
+import pawparazzi.back.comment.dto.response.ReplyLikeResponseDto;
+import pawparazzi.back.comment.dto.response.ReplyLikesResponseDto;
 import pawparazzi.back.comment.dto.response.ReplyResponseDto;
 import pawparazzi.back.comment.dto.response.ReplyListResponseDto;
+import pawparazzi.back.comment.service.ReplyLikeService;
 import pawparazzi.back.comment.service.ReplyService;
 import pawparazzi.back.security.util.JwtUtil;
+
 
 import java.util.Map;
 
@@ -18,6 +22,7 @@ import java.util.Map;
 public class ReplyController {
 
     private final ReplyService replyService;
+    private final ReplyLikeService replyLikeService;
     private final JwtUtil jwtUtil;
 
     /**
@@ -69,5 +74,28 @@ public class ReplyController {
     @GetMapping("/{commentId}")
     public ResponseEntity<ReplyListResponseDto> getReplies(@PathVariable Long commentId) {
         return ResponseEntity.ok(replyService.getRepliesByComment(commentId));
+    }
+
+
+    /**
+     * 대댓글 좋아요 등록/삭제 (토글)
+     */
+    @PostMapping("/{replyId}/like")
+    public ResponseEntity<ReplyLikeResponseDto> toggleReplyLike(
+            @PathVariable Long replyId,
+            @RequestHeader("Authorization") String token) {
+
+        Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        ReplyLikeResponseDto response = replyLikeService.toggleReplyLike(replyId, memberId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 특정 대댓글에 좋아요를 누른 회원 목록 조회
+     */
+    @GetMapping("/{replyId}/likes")
+    public ResponseEntity<ReplyLikesResponseDto> getLikedMembersByReply(@PathVariable Long replyId) {
+        return ResponseEntity.ok(replyLikeService.getLikedMembersByReply(replyId));
     }
 }

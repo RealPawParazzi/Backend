@@ -13,9 +13,9 @@ import pawparazzi.back.board.entity.BoardDocument;
 import pawparazzi.back.board.entity.BoardVisibility;
 import pawparazzi.back.board.repository.BoardRepository;
 import pawparazzi.back.board.repository.BoardMongoRepository;
-import pawparazzi.back.comment.entity.Comment;
 import pawparazzi.back.comment.repository.CommentLikeRepository;
 import pawparazzi.back.comment.repository.CommentRepository;
+import pawparazzi.back.comment.repository.ReplyLikeRepository;
 import pawparazzi.back.comment.repository.ReplyRepository;
 import pawparazzi.back.likes.repository.LikeRepository;
 import pawparazzi.back.member.entity.Member;
@@ -35,6 +35,7 @@ public class BoardService {
     private final LikeRepository likeRepository;
     private final CommentLikeRepository commentLikeRepository;
     private final ReplyRepository replyRepository;
+    private final ReplyLikeRepository replyLikeRepository;
 
     /**
      * 게시물 등록
@@ -239,6 +240,12 @@ public class BoardService {
         if (!board.getAuthor().getId().equals(userId)) {
             throw new IllegalArgumentException("본인이 작성한 게시물만 삭제할 수 있습니다.");
         }
+
+        replyRepository.findByBoardId(boardId).forEach(reply -> {
+            replyLikeRepository.deleteByReplyId(reply.getId());
+        });
+
+        replyRepository.deleteByBoardId(boardId);
 
         commentLikeRepository.deleteByBoardId(boardId);
         commentRepository.deleteByBoardId(boardId);

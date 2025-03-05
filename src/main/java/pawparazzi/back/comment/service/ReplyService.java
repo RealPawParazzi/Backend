@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pawparazzi.back.comment.entity.Comment;
 import pawparazzi.back.comment.repository.CommentRepository;
+import pawparazzi.back.comment.repository.ReplyLikeRepository;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
 import pawparazzi.back.comment.dto.request.ReplyRequestDto;
@@ -26,6 +27,7 @@ public class ReplyService {
     private final ReplyRepository replyRepository;
     private final CommentRepository commentRepository;
     private final MemberRepository memberRepository;
+    private final ReplyLikeRepository  replyLikeRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -83,6 +85,7 @@ public class ReplyService {
             throw new IllegalArgumentException("대댓글 삭제 권한이 없습니다.");
         }
 
+        replyLikeRepository.deleteByReplyId(replyId);
         replyRepository.delete(reply);
 
         if (comment.getReplyCount() > 0) {
