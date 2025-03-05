@@ -10,6 +10,8 @@ import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.member.entity.Member;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -33,6 +35,9 @@ public class Comment {
 
     @Column(nullable = false, length = 500)
     private String content;
+
+    @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Reply> replies = new ArrayList<>();
 
     @Column(nullable = false)
     private int likeCount = 0;

@@ -8,6 +8,8 @@ import org.hibernate.annotations.OnDeleteAction;
 import pawparazzi.back.member.entity.Member;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -23,6 +25,9 @@ public class Reply {
     @JoinColumn(name = "comment_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Comment comment;
+
+    @OneToMany(mappedBy = "reply", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ReplyLike> replyLikes = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
