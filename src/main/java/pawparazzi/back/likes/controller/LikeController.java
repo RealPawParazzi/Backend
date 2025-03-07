@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/likes")
+@RequestMapping("/api/v1/boards")
 @RequiredArgsConstructor
 public class LikeController {
 
@@ -22,7 +22,7 @@ public class LikeController {
     /**
      * 좋아요 등록/삭제
      */
-    @PostMapping("/{boardId}")
+    @PostMapping("/{boardId}/like")
     public ResponseEntity<Map<String, Object>> toggleLike(
             @PathVariable Long boardId,
             @RequestHeader("Authorization") String token) {
@@ -36,7 +36,7 @@ public class LikeController {
     /**
      * 특정 게시글의 좋아요 누른 회원 목록 조회
      */
-    @GetMapping("/{boardId}")
+    @GetMapping("/{boardId}/likes")
     public ResponseEntity<LikeResponseDto> getLikes(@PathVariable Long boardId) {
         return ResponseEntity.ok(likeService.getLikesByBoard(boardId));
     }
