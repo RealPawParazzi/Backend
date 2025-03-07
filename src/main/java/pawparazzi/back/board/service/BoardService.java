@@ -1,18 +1,25 @@
 package pawparazzi.back.board.service;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pawparazzi.back.board.dto.BoardCreateRequestDto;
 import pawparazzi.back.board.dto.BoardListResponseDto;
 import pawparazzi.back.board.dto.BoardDetailDto;
+import pawparazzi.back.board.dto.BoardUpdateRequestDto;
 import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.board.entity.BoardDocument;
+import pawparazzi.back.board.entity.BoardVisibility;
 import pawparazzi.back.board.repository.BoardRepository;
 import pawparazzi.back.board.repository.BoardMongoRepository;
+import pawparazzi.back.comment.repository.CommentLikeRepository;
+import pawparazzi.back.comment.repository.CommentRepository;
+import pawparazzi.back.comment.repository.ReplyLikeRepository;
+import pawparazzi.back.comment.repository.ReplyRepository;
+import pawparazzi.back.likes.repository.LikeRepository;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
-import pawparazzi.back.security.util.JwtUtil;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,12 +31,17 @@ public class BoardService {
     private final BoardRepository boardRepository;
     private final BoardMongoRepository boardMongoRepository;
     private final MemberRepository memberRepository;
-    private final JwtUtil jwtUtil;
+    private final CommentRepository commentRepository;
+    private final LikeRepository likeRepository;
+    private final CommentLikeRepository commentLikeRepository;
+    private final ReplyRepository replyRepository;
+    private final ReplyLikeRepository replyLikeRepository;
 
+    /**
+     * 게시물 등록
+     */
     @Transactional
-    public BoardDetailDto createBoard(BoardCreateRequestDto requestDto, String token) {
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-
+    public BoardDetailDto createBoard(BoardCreateRequestDto requestDto, Long userId) {
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
@@ -37,36 +49,113 @@ public class BoardService {
                 .map(dto -> new BoardDocument.ContentDto(dto.getType(), dto.getValue()))
                 .collect(Collectors.toList());
 
+        String titleImage = requestDto.getTitleImage();
+        if (titleImage == null || titleImage.isBlank()) {
+            titleImage = contents.stream()
+                    .filter(c -> "image".equals(c.getType()))
+                    .map(BoardDocument.ContentDto::getValue)
+                    .findFirst()
+                    .orElse(null);
+        }
+
         String firstText = contents.stream()
                 .filter(c -> "text".equals(c.getType()))
                 .map(BoardDocument.ContentDto::getValue)
                 .findFirst()
                 .orElse(null);
 
-        String firstImage = contents.stream()
-                .filter(c -> "image".equals(c.getType()))
-                .map(BoardDocument.ContentDto::getValue)
-                .findFirst()
-                .orElse(null);
+        if (requestDto.getVisibility() == null) {
+            throw new IllegalArgumentException("게시물 공개 설정은 필수 입력값입니다.");
+        }
 
-        BoardDocument boardDocument = new BoardDocument(null, requestDto.getTitle(), firstImage, firstText, contents);
+        // MongoDB에 게시물 저장
+        BoardDocument boardDocument = new BoardDocument(null, requestDto.getTitle(), titleImage, firstText, contents);
         boardMongoRepository.save(boardDocument);
 
-
-        Board board = new Board(member, boardDocument.getId());
+        // MySQL에 게시물 저장
+        Board board = new Board(member, boardDocument.getId(), requestDto.getVisibility());
         boardRepository.save(board);
 
+        // MongoDB에 MySQL ID 업데이트
         boardDocument.setMysqlId(board.getId());
         boardMongoRepository.save(boardDocument);
 
         return convertToBoardDetailDto(board, boardDocument);
     }
 
+    /**
+     * 게시물 수정
+     */
+    @Transactional
+    public BoardDetailDto updateBoard(Long boardId, Long userId, BoardUpdateRequestDto requestDto) {
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new EntityNotFoundException("게시물을 찾을 수 없습니다."));
+
+        if (!board.getAuthor().getId().equals(userId)) {
+            throw new IllegalArgumentException("게시물 수정 권한이 없습니다.");
+        }
+
+        BoardDocument boardDocument = boardMongoRepository.findByMysqlId(boardId)
+                .orElseThrow(() -> new EntityNotFoundException("MongoDB에서 해당 게시글을 찾을 수 없습니다."));
+
+        if (requestDto.getTitle() != null && !requestDto.getTitle().isBlank()) {
+            boardDocument.setTitle(requestDto.getTitle());
+        }
+
+        if (requestDto.getTitleImage() != null && !requestDto.getTitleImage().isBlank()) {
+            boardDocument.setTitleImage(requestDto.getTitleImage());
+        }
+
+        if (requestDto.getContents() != null && !requestDto.getContents().isEmpty()) {
+            List<BoardDocument.ContentDto> updatedContents = requestDto.getContents().stream()
+                    .map(dto -> new BoardDocument.ContentDto(dto.getType(), dto.getValue()))
+                    .collect(Collectors.toList());
+            boardDocument.setContents(updatedContents);
+
+            String firstText = updatedContents.stream()
+                    .filter(c -> "text".equals(c.getType()))
+                    .map(BoardDocument.ContentDto::getValue)
+                    .findFirst()
+                    .orElse(null);
+            boardDocument.setTitleContent(firstText);
+        }
+
+        if (requestDto.getVisibility() != null) {
+            board.setVisibility(requestDto.getVisibility());
+        }
+
+        // MongoDB , MySQL 업데이트
+        boardMongoRepository.save(boardDocument);
+        boardRepository.save(board);
+
+        return convertToBoardDetailDto(board, boardDocument);
+    }
+
+    /**
+     * 특정 회원의 게시물 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BoardListResponseDto> getBoardsByMember(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다."));
+
+        List<Board> boards = boardRepository.findByAuthor(member);
+
+        return boards.stream()
+                .filter(board -> board.getVisibility() == BoardVisibility.PUBLIC)
+                .map(this::convertToBoardListResponseDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 게시물 전체 조회
+     */
     @Transactional(readOnly = true)
     public List<BoardListResponseDto> getBoardList() {
         List<Board> boards = boardRepository.findAll();
 
         return boards.stream()
+                .filter(board -> board.getVisibility() == BoardVisibility.PUBLIC)
                 .map(this::convertToBoardListResponseDto)
                 .collect(Collectors.toList());
     }
@@ -84,6 +173,7 @@ public class BoardService {
         dto.setFavoriteCount(board.getFavoriteCount());
         dto.setCommentCount(board.getCommentCount());
         dto.setViewCount(board.getViewCount());
+        dto.setVisibility(board.getVisibility());
 
         if (board.getAuthor() != null) {
             BoardListResponseDto.AuthorDto authorDto = new BoardListResponseDto.AuthorDto();
@@ -96,6 +186,9 @@ public class BoardService {
         return dto;
     }
 
+    /**
+     * 게시물 상세 조회
+     */
     @Transactional(readOnly = true)
     public BoardDetailDto getBoardDetail(Long boardId) {
         Board board = boardRepository.findById(boardId)
@@ -117,6 +210,7 @@ public class BoardService {
         dto.setFavoriteCount(board.getFavoriteCount());
         dto.setCommentCount(board.getCommentCount());
         dto.setViewCount(board.getViewCount());
+        dto.setVisibility(board.getVisibility());
 
         if (board.getAuthor() != null) {
             BoardDetailDto.AuthorDto authorDto = new BoardDetailDto.AuthorDto();
@@ -132,5 +226,33 @@ public class BoardService {
                 .collect(Collectors.toList()));
 
         return dto;
+    }
+
+
+    /**
+     * 게시물 삭제
+     */
+    @Transactional
+    public void deleteBoard(Long boardId, Long userId) {
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시물을 찾을 수 없습니다."));
+
+        if (!board.getAuthor().getId().equals(userId)) {
+            throw new IllegalArgumentException("본인이 작성한 게시물만 삭제할 수 있습니다.");
+        }
+
+        replyRepository.findByBoardId(boardId).forEach(reply -> {
+            replyLikeRepository.deleteByReplyId(reply.getId());
+        });
+
+        replyRepository.deleteByBoardId(boardId);
+
+        commentLikeRepository.deleteByBoardId(boardId);
+        commentRepository.deleteByBoardId(boardId);
+        likeRepository.deleteByBoardId(boardId);
+
+        // MongoDB & MySQL 삭제
+        boardMongoRepository.deleteByMysqlId(board.getId());
+        boardRepository.delete(board);
     }
 }

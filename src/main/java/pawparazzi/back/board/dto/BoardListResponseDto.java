@@ -2,15 +2,18 @@ package pawparazzi.back.board.dto;
 
 import lombok.Getter;
 import lombok.Setter;
+import pawparazzi.back.board.entity.BoardVisibility;
 
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
+// 게시물 전체 목록 조회
 public class BoardListResponseDto {
 
     private Long id;
     private String title;
+    private BoardVisibility visibility;
     private String titleImage;
     private String titleContent;
     private LocalDateTime writeDatetime;
