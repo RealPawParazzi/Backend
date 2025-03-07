@@ -52,7 +52,7 @@ public class MemberController {
     }
 
     /**
-     * 사용자 정보 수정 (게시물 정보 제외)
+     * 사용자 정보 수정
      */
     @PatchMapping("/me")
     public ResponseEntity<UpdateMemberResponseDto> updateMember(

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.board.repository.BoardMongoRepository;
 import pawparazzi.back.board.repository.BoardRepository;
+import pawparazzi.back.member.dto.KakaoUserDto;
 import pawparazzi.back.member.dto.request.LoginRequestDto;
 import pawparazzi.back.member.dto.request.SignUpRequestDto;
 import pawparazzi.back.member.dto.request.UpdateMemberRequestDto;
@@ -19,6 +20,7 @@ import pawparazzi.back.security.util.JwtUtil;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 
 @Service
@@ -126,5 +128,29 @@ public class MemberService {
         boardRepository.deleteByAuthor(member);
 
         memberRepository.delete(member);
+    }
+
+    /**
+     * 카카오 로그인 회원 처리
+     */
+    @Transactional
+    public Long handleKakaoLogin(KakaoUserDto kakaoUser) {
+        Optional<Member> existingMember = memberRepository.findByEmail(kakaoUser.getEmail());
+
+        if (existingMember.isPresent()) {
+            return existingMember.get().getId();
+        } else {
+            String randomPassword = passwordEncoder.encode(UUID.randomUUID().toString());
+
+            Member newMember = new Member(
+                    kakaoUser.getEmail(),
+                    randomPassword,
+                    kakaoUser.getNickname(),
+                    kakaoUser.getProfileImageUrl(),
+                    kakaoUser.getNickname()
+            );
+            memberRepository.save(newMember);
+            return newMember.getId();
+        }
     }
 }
