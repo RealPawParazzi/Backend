@@ -6,6 +6,8 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class ReplyLikeResponseDto {
-    private boolean liked;
-    private int likeCount;
+    private final Long memberId;
+    private final Long replyId;
+    private final boolean liked;
+    private final int replyLikeCount;
 }
