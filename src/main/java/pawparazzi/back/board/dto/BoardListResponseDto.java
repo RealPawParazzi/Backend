@@ -1,7 +1,6 @@
 package pawparazzi.back.board.dto;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import pawparazzi.back.board.entity.BoardVisibility;
 
 import java.time.LocalDateTime;
@@ -25,6 +24,9 @@ public class BoardListResponseDto {
 
     @Getter
     @Setter
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AuthorDto {
         private Long id;
         private String nickname;

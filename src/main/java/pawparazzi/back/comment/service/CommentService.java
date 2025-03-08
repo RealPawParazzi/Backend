@@ -3,6 +3,7 @@ package pawparazzi.back.comment.service;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.board.repository.BoardRepository;
@@ -10,7 +11,10 @@ import pawparazzi.back.comment.dto.request.CommentRequestDto;
 import pawparazzi.back.comment.dto.response.CommentResponseDto;
 import pawparazzi.back.comment.dto.response.CommentListResponseDto;
 import pawparazzi.back.comment.entity.Comment;
+import pawparazzi.back.comment.entity.Reply;
 import pawparazzi.back.comment.repository.CommentRepository;
+import pawparazzi.back.comment.repository.ReplyLikeRepository;
+import pawparazzi.back.comment.repository.ReplyRepository;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
 
@@ -26,6 +30,8 @@ public class CommentService {
     private final BoardRepository boardRepository;
     private final MemberRepository memberRepository;
     private final CommentLikeService commentLikeService;
+    private final ReplyRepository replyRepository;
+    private final ReplyLikeRepository replyLikeRepository;
 
 
     /**
@@ -66,13 +72,12 @@ public class CommentService {
     /**
      * 댓글 삭제
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRED)
     public void deleteComment(Long commentId, Long memberId) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new EntityNotFoundException("댓글을 찾을 수 없습니다."));
 
         Board board = comment.getBoard();
-
         Long boardAuthorId = board.getAuthor().getId();
         Long commentAuthorId = comment.getMember().getId();
 
@@ -81,6 +86,12 @@ public class CommentService {
         }
 
         commentLikeService.deleteCommentLikes(commentId);
+
+        List<Reply> replies = replyRepository.findByCommentId(commentId);
+        for (Reply reply : replies) {
+            replyLikeRepository.deleteByReplyId(reply.getId());
+        }
+        replyRepository.deleteByCommentId(commentId);
 
         commentRepository.delete(comment);
 

@@ -26,9 +26,6 @@ public class Reply {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Comment comment;
 
-    @OneToMany(mappedBy = "reply", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ReplyLike> replyLikes = new ArrayList<>();
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
