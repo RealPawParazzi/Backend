@@ -119,13 +119,12 @@ public class MemberService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new EntityNotFoundException("회원 정보를 찾을 수 없습니다."));
 
+        // 해당 사용자의 게시물 삭제
         List<Board> boards = boardRepository.findByAuthor(member);
-
         for (Board board : boards) {
             boardMongoRepository.deleteByMysqlId(board.getId());
+            boardRepository.delete(board);
         }
-
-        boardRepository.deleteByAuthor(member);
 
         memberRepository.delete(member);
     }
