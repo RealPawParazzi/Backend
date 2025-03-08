@@ -8,11 +8,13 @@ import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.board.repository.BoardRepository;
 import pawparazzi.back.likes.dto.LikeMemberDto;
 import pawparazzi.back.likes.dto.LikeResponseDto;
+import pawparazzi.back.likes.dto.LikeToggleResponseDto;
 import pawparazzi.back.likes.entity.Like;
 import pawparazzi.back.likes.repository.LikeRepository;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -29,7 +31,7 @@ public class LikeService {
      * 좋아요 등록/삭제 (토글)
      */
     @Transactional
-    public Map<String, Object> toggleLike(Long boardId, Long memberId) {
+    public LikeToggleResponseDto toggleLike(Long boardId, Long memberId) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new EntityNotFoundException("게시글을 찾을 수 없습니다."));
         Member member = memberRepository.findById(memberId)
@@ -49,7 +51,12 @@ public class LikeService {
             liked = true;
         }
 
-        return Map.of("liked", liked, "favoriteCount", board.getFavoriteCount());
+        return new LikeToggleResponseDto(
+                memberId,
+                boardId,
+                liked,
+                board.getFavoriteCount()
+        );
     }
 
     /**

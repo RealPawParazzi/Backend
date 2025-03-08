@@ -47,7 +47,7 @@ public class ReplyLikeService {
             liked = true;
         }
 
-        return new ReplyLikeResponseDto(liked, reply.getLikeCount());
+        return new ReplyLikeResponseDto(memberId, replyId, liked, reply.getLikeCount());
     }
 
     /**
