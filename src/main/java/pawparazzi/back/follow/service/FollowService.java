@@ -24,11 +24,11 @@ public class FollowService {
     private final JwtUtil jwtUtil;
 
     @Transactional
-    public FollowResponseDto follow(String targetNickName, String token) {
+    public FollowResponseDto follow(Long targetId, String token) {
         Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        Member following = memberRepository.findByNickName(targetNickName)
+        Member following = memberRepository.findById(targetId)
                 .orElseThrow(() -> new IllegalArgumentException("팔로우할 사용자가 존재하지 않습니다."));
 
         //추후 수정 필요 (특정 회원 프로필 정보에서 체크하여 메서드 활성화 및 비활성화)
@@ -52,11 +52,11 @@ public class FollowService {
     }
 
     @Transactional
-    public void unfollow(String targetNickName, String token) {
+    public void unfollow(Long targetId, String token) {
         Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        Member following = memberRepository.findByNickName(targetNickName)
+        Member following = memberRepository.findById(targetId)
                 .orElseThrow(() -> new IllegalArgumentException("언팔로우할 사용자가 존재하지 않습니다."));
 
         //추후 수정 필요 (특정 회원 프로필 정보에서 체크하여 메서드 활성화 및 비활성화)
@@ -67,8 +67,8 @@ public class FollowService {
     }
 
     @Transactional(readOnly = true)
-    public List<FollowerResponseDto> getFollowers(String nickName) {
-        Member member = memberRepository.findByNickName(nickName)
+    public List<FollowerResponseDto> getFollowers(Long targetId) {
+        Member member = memberRepository.findById(targetId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         List<Follow> follower = followRepository.findByFollowing(member);
@@ -84,8 +84,8 @@ public class FollowService {
     }
 
     @Transactional(readOnly = true)
-    public List<FollowingResponseDto> getFollowing(String nickName) {
-        Member member = memberRepository.findByNickName(nickName)
+    public List<FollowingResponseDto> getFollowing(Long targetId) {
+        Member member = memberRepository.findById(targetId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         List<Follow> following = followRepository.findByFollower(member);
