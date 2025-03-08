@@ -195,13 +195,17 @@ public class BoardService {
     /**
      * 게시물 상세 조회
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public BoardDetailDto getBoardDetail(Long boardId) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new IllegalArgumentException("MySQL에 해당 게시글이 존재하지 않습니다."));
 
         BoardDocument boardDocument = boardMongoRepository.findByMysqlId(board.getId())
                 .orElseThrow(() -> new IllegalArgumentException("MongoDB에 해당 게시글이 존재하지 않습니다."));
+
+        board.increaseViewCount();
+        boardRepository.save(board);
+        boardRepository.flush();
 
         return convertToBoardDetailDto(board, boardDocument);
     }

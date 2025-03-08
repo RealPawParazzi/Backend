@@ -61,6 +61,10 @@ public class Board {
         }
     }
 
+    public void increaseViewCount() {
+        this.viewCount++;
+    }
+
     public Long getAuthorId() {
         return (author != null) ? author.getId() : null;
     }
