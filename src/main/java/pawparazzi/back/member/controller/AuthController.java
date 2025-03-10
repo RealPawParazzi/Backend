@@ -15,7 +15,7 @@ import pawparazzi.back.security.util.JwtUtil;
 import java.net.URI;
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")

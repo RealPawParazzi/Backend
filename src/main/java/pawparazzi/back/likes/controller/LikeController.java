@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/boards")
+@RequestMapping("/api/boards")
 @RequiredArgsConstructor
 public class LikeController {
 
