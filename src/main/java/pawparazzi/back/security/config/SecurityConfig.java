@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/boards/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/comments/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/replies/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/follow/**").permitAll()
 
                         // 인증이 필요한 API
                         .requestMatchers(HttpMethod.POST, "/api/v1/boards/**").authenticated()
