@@ -37,6 +37,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 인증 없이 접근 가능한 API
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/async/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/boards/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/replies/**").permitAll()

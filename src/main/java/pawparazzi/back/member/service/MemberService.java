@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import pawparazzi.back.S3.service.S3AsyncService;
 import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.board.repository.BoardMongoRepository;
 import pawparazzi.back.board.repository.BoardRepository;
@@ -19,6 +21,7 @@ import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
 import pawparazzi.back.security.util.JwtUtil;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,11 +37,13 @@ public class MemberService {
     private final JwtUtil jwtUtil;
     private final BoardRepository boardRepository;
     private final BoardMongoRepository boardMongoRepository;
+    private final S3AsyncService s3AsyncService;
 
     /**
      * 회원가입
      */
-    public void registerUser(SignUpRequestDto request) {
+    @Transactional
+    public void registerUser(SignUpRequestDto request, MultipartFile profileImage) {
         if (memberRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");
         }
@@ -47,10 +52,20 @@ public class MemberService {
             throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
         }
 
-        // 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 
-        Member member = new Member(request.getEmail(), encodedPassword, request.getNickName(), request.getProfileImageUrl(), request.getName());
+        // 프로필 이미지 업로드 (비동기)
+        String profileImageUrl = "https://default-image-url.com/default-profile.png";
+        if (profileImage != null && !profileImage.isEmpty()) {
+            try {
+                String fileName = "profile_images/" + request.getNickName() + "_" + System.currentTimeMillis();
+                profileImageUrl = s3AsyncService.uploadFile(fileName, profileImage.getBytes(), profileImage.getContentType()).join();
+            } catch (IOException e) {
+                throw new RuntimeException("파일 업로드 실패: " + e.getMessage());
+            }
+        }
+
+        Member member = new Member(request.getEmail(), encodedPassword, request.getNickName(), profileImageUrl, request.getName());
         memberRepository.save(member);
     }
 
@@ -69,7 +84,6 @@ public class MemberService {
             throw new BadCredentialsException("이메일 또는 비밀번호가 잘못되었습니다.");
         }
 
-        // JWT를 memberId 기반으로 생성
         return jwtUtil.generateIdToken(member.getId());
     }
 
@@ -85,23 +99,45 @@ public class MemberService {
      * 회원 정보 수정
      */
     @Transactional
-    public UpdateMemberResponseDto updateMember(Long memberId, UpdateMemberRequestDto request) {
+    public UpdateMemberResponseDto updateMember(Long memberId, UpdateMemberRequestDto request, MultipartFile newProfileImage) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new EntityNotFoundException("회원 정보를 찾을 수 없습니다."));
 
-        if (request.getNickName() != null && !request.getNickName().isBlank()) {
+        // 닉네임 변경
+        if (request.getNickName() != null && !request.getNickName().isBlank() &&
+                !request.getNickName().equals(member.getNickName())) {
             if (memberRepository.existsByNickName(request.getNickName())) {
                 throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
             }
             member.setNickName(request.getNickName());
         }
 
+        // 이름 변경
         if (request.getName() != null && !request.getName().isBlank()) {
             member.setName(request.getName());
         }
 
-        if (request.getProfileImageUrl() != null && !request.getProfileImageUrl().isBlank()) {
-            member.setProfileImageUrl(request.getProfileImageUrl());
+        // 프로필 이미지 변경
+        if (newProfileImage != null && !newProfileImage.isEmpty()) {
+            try {
+                // 기존 프로필 이미지 삭제
+                if (member.getProfileImageUrl() != null) {
+                    String oldFileName = extractFileName(member.getProfileImageUrl());
+                    s3AsyncService.deleteFile("profile_images/" + oldFileName);
+                }
+
+                String newFileName = "profile_images/" + member.getNickName() + "_" + System.currentTimeMillis();
+                String contentType = newProfileImage.getContentType();
+                byte[] fileData = newProfileImage.getBytes();
+
+                String newProfileImageUrl = s3AsyncService
+                        .uploadFile(newFileName, fileData, contentType)
+                        .join();
+
+                member.setProfileImageUrl(newProfileImageUrl);
+            } catch (IOException e) {
+                throw new RuntimeException("프로필 이미지 변경 실패: " + e.getMessage());
+            }
         }
 
         return new UpdateMemberResponseDto(
@@ -111,6 +147,18 @@ public class MemberService {
                 member.getName(),
                 member.getProfileImageUrl()
         );
+    }
+
+    public String extractFileName(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return null;
+        }
+
+        if (imageUrl.contains("/profile_images/")) {
+            return imageUrl.substring(imageUrl.lastIndexOf("/profile_images/") + "/profile_images/".length());
+        }
+
+        return imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
     }
 
     /**

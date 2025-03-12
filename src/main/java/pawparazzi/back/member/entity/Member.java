@@ -36,7 +36,7 @@ public class Member {
     @Column
     private String name;
 
-    @Column
+    @Column(name = "profile_image_url", length = 1024)
     private String profileImageUrl;
 
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
