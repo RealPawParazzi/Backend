@@ -13,7 +13,7 @@ import pawparazzi.back.security.util.JwtUtil;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/boards")
+@RequestMapping("/api/boards")
 @RequiredArgsConstructor
 public class BoardController {
 

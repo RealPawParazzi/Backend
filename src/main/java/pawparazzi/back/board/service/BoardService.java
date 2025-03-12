@@ -155,32 +155,38 @@ public class BoardService {
         List<Board> boards = boardRepository.findAll();
 
         return boards.stream()
-                .filter(board -> board.getVisibility() == BoardVisibility.PUBLIC)
                 .map(this::convertToBoardListResponseDto)
                 .collect(Collectors.toList());
     }
 
     private BoardListResponseDto convertToBoardListResponseDto(Board board) {
-        BoardDocument boardDocument = boardMongoRepository.findByMysqlId(board.getId())
-                .orElseThrow(() -> new IllegalArgumentException("MongoDB에 해당 게시글이 존재하지 않습니다."));
-
         BoardListResponseDto dto = new BoardListResponseDto();
         dto.setId(board.getId());
-        dto.setTitle(boardDocument.getTitle());
-        dto.setTitleImage(boardDocument.getTitleImage());
-        dto.setTitleContent(boardDocument.getTitleContent());
         dto.setWriteDatetime(board.getWriteDatetime());
         dto.setFavoriteCount(board.getFavoriteCount());
         dto.setCommentCount(board.getCommentCount());
         dto.setViewCount(board.getViewCount());
         dto.setVisibility(board.getVisibility());
 
-        if (board.getAuthor() != null) {
-            BoardListResponseDto.AuthorDto authorDto = new BoardListResponseDto.AuthorDto();
-            authorDto.setId(board.getAuthor().getId());
-            authorDto.setNickname(board.getAuthor().getNickName());
-            authorDto.setProfileImageUrl(board.getAuthor().getProfileImageUrl());
-            dto.setAuthor(authorDto);
+        BoardDocument boardDocument = boardMongoRepository.findByMysqlId(board.getId())
+                .orElse(null);
+
+        if (boardDocument != null) {
+            dto.setTitle(boardDocument.getTitle());
+            dto.setTitleImage(boardDocument.getTitleImage());
+            dto.setTitleContent(boardDocument.getTitleContent());
+        }
+        else {
+            dto.setTitle("제목 없음");
+            dto.setTitleImage(null);
+            dto.setTitleContent("내용 없음");
+        }
+
+        Long authorId = board.getAuthorId();
+        if (authorId != null) {
+            Member author = memberRepository.findById(authorId)
+                    .orElseThrow(() -> new IllegalArgumentException("해당 회원이 존재하지 않습니다."));
+            dto.setAuthor(new BoardListResponseDto.AuthorDto(author.getId(), author.getNickName(), author.getProfileImageUrl()));
         }
 
         return dto;
@@ -189,13 +195,17 @@ public class BoardService {
     /**
      * 게시물 상세 조회
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public BoardDetailDto getBoardDetail(Long boardId) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new IllegalArgumentException("MySQL에 해당 게시글이 존재하지 않습니다."));
 
         BoardDocument boardDocument = boardMongoRepository.findByMysqlId(board.getId())
                 .orElseThrow(() -> new IllegalArgumentException("MongoDB에 해당 게시글이 존재하지 않습니다."));
+
+        board.increaseViewCount();
+        boardRepository.save(board);
+        boardRepository.flush();
 
         return convertToBoardDetailDto(board, boardDocument);
     }
@@ -237,7 +247,7 @@ public class BoardService {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시물을 찾을 수 없습니다."));
 
-        if (!board.getAuthor().getId().equals(userId)) {
+        if (!board.getAuthorId().equals(userId)) {  // getAuthorId() 사용 가능
             throw new IllegalArgumentException("본인이 작성한 게시물만 삭제할 수 있습니다.");
         }
 
@@ -246,12 +256,10 @@ public class BoardService {
         });
 
         replyRepository.deleteByBoardId(boardId);
-
         commentLikeRepository.deleteByBoardId(boardId);
         commentRepository.deleteByBoardId(boardId);
         likeRepository.deleteByBoardId(boardId);
 
-        // MongoDB & MySQL 삭제
         boardMongoRepository.deleteByMysqlId(board.getId());
         boardRepository.delete(board);
     }

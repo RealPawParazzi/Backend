@@ -17,32 +17,32 @@ public class FollowController {
 
     private final FollowService followService;
 
-    @PostMapping("/{targetNickName}")
+    @PostMapping("/{targetId}")
     public ResponseEntity<FollowResponseDto> follow(
-            @PathVariable String targetNickName,
+            @PathVariable Long targetId,
             @RequestHeader("Authorization") String token){
-        FollowResponseDto response = followService.follow(targetNickName, token);
+        FollowResponseDto response = followService.follow(targetId, token);
         return ResponseEntity.ok(response);
     }
 
 
-    @DeleteMapping("/{targetNickName}")
+    @DeleteMapping("/{targetId}")
     public ResponseEntity<String> unfollow(
-            @PathVariable String targetNickName,
+            @PathVariable Long targetId,
             @RequestHeader("Authorization") String token){
-        followService.unfollow(targetNickName, token);
+        followService.unfollow(targetId, token);
         return ResponseEntity.ok("팔로우 취소되었습니다.");
     }
 
-    @GetMapping("/followers/{nickName}")
-    public ResponseEntity<List<FollowerResponseDto>> getFollowers(@PathVariable String nickName){
-        List<FollowerResponseDto> followers = followService.getFollowers(nickName);
+    @GetMapping("/followers/{targetId}")
+    public ResponseEntity<List<FollowerResponseDto>> getFollowers(@PathVariable Long targetId){
+        List<FollowerResponseDto> followers = followService.getFollowers(targetId);
         return ResponseEntity.ok(followers);
     }
 
-    @GetMapping("/following/{nickName}")
-    public ResponseEntity<List<FollowingResponseDto>> getFollowing(@PathVariable String nickName){
-        List<FollowingResponseDto> followings = followService.getFollowing(nickName);
+    @GetMapping("/following/{targetId}")
+    public ResponseEntity<List<FollowingResponseDto>> getFollowing(@PathVariable Long targetId){
+        List<FollowingResponseDto> followings = followService.getFollowing(targetId);
         return ResponseEntity.ok(followings);
     }
 }

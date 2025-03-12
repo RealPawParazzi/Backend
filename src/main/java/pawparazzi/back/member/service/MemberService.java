@@ -9,9 +9,11 @@ import org.springframework.stereotype.Service;
 import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.board.repository.BoardMongoRepository;
 import pawparazzi.back.board.repository.BoardRepository;
+import pawparazzi.back.member.dto.KakaoUserDto;
 import pawparazzi.back.member.dto.request.LoginRequestDto;
 import pawparazzi.back.member.dto.request.SignUpRequestDto;
 import pawparazzi.back.member.dto.request.UpdateMemberRequestDto;
+import pawparazzi.back.member.dto.response.MemberResponseDto;
 import pawparazzi.back.member.dto.response.UpdateMemberResponseDto;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
@@ -19,6 +21,8 @@ import pawparazzi.back.security.util.JwtUtil;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -117,14 +121,52 @@ public class MemberService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new EntityNotFoundException("회원 정보를 찾을 수 없습니다."));
 
+        // 해당 사용자의 게시물 삭제
         List<Board> boards = boardRepository.findByAuthor(member);
-
         for (Board board : boards) {
             boardMongoRepository.deleteByMysqlId(board.getId());
+            boardRepository.delete(board);
         }
 
-        boardRepository.deleteByAuthor(member);
-
         memberRepository.delete(member);
+    }
+
+    /**
+     * 전체 회원 목록 조회
+     */
+    @Transactional
+    public List<MemberResponseDto> getAllMembers() {
+        return memberRepository.findAll().stream()
+                .map(member -> new MemberResponseDto(
+                        member.getId(),
+                        member.getName(),
+                        member.getNickName(),
+                        member.getProfileImageUrl()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 카카오 로그인 회원 처리
+     */
+    @Transactional
+    public Long handleKakaoLogin(KakaoUserDto kakaoUser) {
+        Optional<Member> existingMember = memberRepository.findByEmail(kakaoUser.getEmail());
+
+        if (existingMember.isPresent()) {
+            return existingMember.get().getId();
+        } else {
+            String randomPassword = passwordEncoder.encode(UUID.randomUUID().toString());
+
+            Member newMember = new Member(
+                    kakaoUser.getEmail(),
+                    randomPassword,
+                    kakaoUser.getNickname(),
+                    kakaoUser.getProfileImageUrl(),
+                    kakaoUser.getNickname()
+            );
+            memberRepository.save(newMember);
+            return newMember.getId();
+        }
     }
 }

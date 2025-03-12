@@ -7,15 +7,17 @@ import org.springframework.web.bind.annotation.*;
 import pawparazzi.back.member.dto.request.LoginRequestDto;
 import pawparazzi.back.member.dto.request.SignUpRequestDto;
 import pawparazzi.back.member.dto.request.UpdateMemberRequestDto;
+import pawparazzi.back.member.dto.response.MemberResponseDto;
 import pawparazzi.back.member.dto.response.UpdateMemberResponseDto;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.service.MemberService;
 import pawparazzi.back.security.util.JwtUtil;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class MemberController {
 
@@ -52,7 +54,7 @@ public class MemberController {
     }
 
     /**
-     * 사용자 정보 수정 (게시물 정보 제외)
+     * 사용자 정보 수정
      */
     @PatchMapping("/me")
     public ResponseEntity<UpdateMemberResponseDto> updateMember(
@@ -74,5 +76,15 @@ public class MemberController {
         Long memberId = jwtUtil.extractMemberId(token);
         memberService.deleteMember(memberId);
         return ResponseEntity.ok("회원 탈퇴 완료");
+    }
+
+
+    /**
+     * 전체 회원 목록 조회 API
+     */
+    @GetMapping
+    public ResponseEntity<List<MemberResponseDto>> getAllMembers() {
+        List<MemberResponseDto> members = memberService.getAllMembers();
+        return ResponseEntity.ok(members);
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import pawparazzi.back.likes.dto.LikeResponseDto;
+import pawparazzi.back.likes.dto.LikeToggleResponseDto;
 import pawparazzi.back.likes.service.LikeService;
 import pawparazzi.back.security.util.JwtUtil;
 
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/boards")
+@RequestMapping("/api/boards")
 @RequiredArgsConstructor
 public class LikeController {
 
@@ -23,12 +24,12 @@ public class LikeController {
      * 좋아요 등록/삭제
      */
     @PostMapping("/{boardId}/like")
-    public ResponseEntity<Map<String, Object>> toggleLike(
+    public ResponseEntity<LikeToggleResponseDto> toggleLike(
             @PathVariable Long boardId,
             @RequestHeader("Authorization") String token) {
 
         Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        Map<String, Object> response = likeService.toggleLike(boardId, memberId);
+        LikeToggleResponseDto response = likeService.toggleLike(boardId, memberId);
 
         return ResponseEntity.ok(response);
     }

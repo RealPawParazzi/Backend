@@ -17,7 +17,7 @@ import pawparazzi.back.security.util.JwtUtil;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/replies")
+@RequestMapping("/api/replies")
 @RequiredArgsConstructor
 public class ReplyController {
 

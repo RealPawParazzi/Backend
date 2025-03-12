@@ -36,19 +36,20 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // 인증 없이 접근 가능한 API
-                        .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/boards/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/comments/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/replies/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/boards/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/replies/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/follow/**").permitAll()
 
                         // 인증이 필요한 API
-                        .requestMatchers(HttpMethod.POST, "/api/v1/boards/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/comments/**").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/comments/**").authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/comments/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/replies/**").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/replies/**").authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/replies/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/boards/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/comments/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/comments/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/comments/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/replies/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/replies/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/replies/**").authenticated()
 
                         .anyRequest().authenticated())  // 나머지는 인증 필요
                 .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userDetailsService),

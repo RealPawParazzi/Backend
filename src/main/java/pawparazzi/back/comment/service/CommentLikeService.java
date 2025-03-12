@@ -48,7 +48,7 @@ public class CommentLikeService {
             liked = true;
         }
 
-        return new CommentLikeResponseDto(liked, comment.getLikeCount());
+        return new CommentLikeResponseDto(memberId, commentId, liked, comment.getLikeCount());
     }
 
 
