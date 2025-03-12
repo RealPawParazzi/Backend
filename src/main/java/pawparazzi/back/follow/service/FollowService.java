@@ -76,6 +76,7 @@ public class FollowService {
         return follower.stream()
                 .map(follow -> {
                     FollowerResponseDto dto = new FollowerResponseDto();
+                    dto.setFollowerId(follow.getFollower().getId());
                     dto.setFollowerNickName(follow.getFollower().getNickName());
                     dto.setFollowerName(follow.getFollower().getName());
                     dto.setFollowerProfileImageUrl(follow.getFollower().getProfileImageUrl());
@@ -93,6 +94,7 @@ public class FollowService {
         return following.stream()
                 .map(follow -> {
                     FollowingResponseDto dto = new FollowingResponseDto();
+                    dto.setFollowingId(follow.getFollowing().getId());
                     dto.setFollowingNickName(follow.getFollowing().getNickName());
                     dto.setFollowingName(follow.getFollowing().getName());
                     dto.setFollowingProfileImageUrl(follow.getFollowing().getProfileImageUrl());

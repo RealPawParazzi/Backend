@@ -11,11 +11,13 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class FollowerResponseDto {
+    private Long followerId;
     private String followerNickName;
     private String followerName;
     private String followerProfileImageUrl;
 
-    public FollowerResponseDto(String followerNickName, String followerName, String followerProfileImageUrl) {
+    public FollowerResponseDto(Long followerId, String followerNickName, String followerName, String followerProfileImageUrl) {
+        this.followerId = followerId;
         this.followerNickName = followerNickName;
         this.followerName = followerName;
         this.followerProfileImageUrl = followerProfileImageUrl;
