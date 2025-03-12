@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pawparazzi.back.follow.dto.FollowResponseDto;
 import pawparazzi.back.follow.dto.FollowerResponseDto;
 import pawparazzi.back.follow.dto.FollowingResponseDto;
+import pawparazzi.back.follow.dto.UnfollowResponseDto;
 import pawparazzi.back.follow.entity.Follow;
 import pawparazzi.back.follow.repository.FollowRepository;
 import pawparazzi.back.member.entity.Member;
@@ -43,8 +44,13 @@ public class FollowService {
 
         Follow follow = new Follow(member, following);
         followRepository.save(follow);
-        int followerCount = followRepository.countByFollower(member);
-        int followingCount = followRepository.countByFollowing(member);
+        /**
+         * A(팔로우 하는 사람) ---> B(팔로우 당하는 사람)
+         */
+        //B의 팔로워 수
+        int followerCount = followRepository.countByFollowing(following);
+        //A의 팔로잉 수
+        int followingCount = followRepository.countByFollower(member);
 
         FollowResponseDto dto = getFollowResponseDto(member, following, followerCount, followingCount);
         dto.setFollowedStatus(true);
@@ -52,7 +58,7 @@ public class FollowService {
     }
 
     @Transactional
-    public void unfollow(Long targetId, String token) {
+    public UnfollowResponseDto unfollow(Long targetId, String token) {
         Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
@@ -62,8 +68,18 @@ public class FollowService {
         //추후 수정 필요 (특정 회원 프로필 정보에서 체크하여 메서드 활성화 및 비활성화)
         Follow follow = followRepository.findByFollowerAndFollowing(member, following)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 팔로우하고 있지 않습니다."));
-
         followRepository.delete(follow);
+        /**
+         * A(팔로우 하는 사람/member) ---> B(팔로우 당하는 사람/following)
+         */
+        //B의 팔로워 수
+        int followerCount = followRepository.countByFollowing(following);
+        //A의 팔로잉 수
+        int followingCount = followRepository.countByFollower(member);
+
+        UnfollowResponseDto dto = getUnfollowResponseDto(member, following, followerCount, followingCount);
+        dto.setFollowedStatus(false);
+        return dto;
     }
 
     @Transactional(readOnly = true)
@@ -105,6 +121,20 @@ public class FollowService {
     @NotNull
     private static FollowResponseDto getFollowResponseDto(Member member, Member following, int followerCount, int followingCount) {
         FollowResponseDto responseDto = new FollowResponseDto();
+        responseDto.setFollowerId(member.getId());
+        responseDto.setFollowingId(following.getId());
+        responseDto.setFollowerNickName(member.getNickName());
+        responseDto.setFollowingNickName(following.getNickName());
+        responseDto.setFollowerProfileImageUrl(member.getProfileImageUrl());
+        responseDto.setFollowingProfileImageUrl(following.getProfileImageUrl());
+        responseDto.setFollowerCount(followerCount);
+        responseDto.setFollowingCount(followingCount);
+        return responseDto;
+    }
+
+    @NotNull
+    private static UnfollowResponseDto getUnfollowResponseDto(Member member, Member following, int followerCount, int followingCount) {
+        UnfollowResponseDto responseDto = new UnfollowResponseDto();
         responseDto.setFollowerId(member.getId());
         responseDto.setFollowingId(following.getId());
         responseDto.setFollowerNickName(member.getNickName());
