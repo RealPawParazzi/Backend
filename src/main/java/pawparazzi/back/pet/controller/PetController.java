@@ -46,7 +46,7 @@ public class PetController {
         }
 
         return petService.registerPet(userId, registerDto, petImage)
-                .thenApply(pet -> ResponseEntity.ok(new PetResponseDto(pet)));
+                .thenApply(ResponseEntity::ok);
     }
 
     /**
@@ -71,23 +71,39 @@ public class PetController {
     /**
      * 반려동물 정보 수정
      */
-    @PutMapping("/{petId}")
-    public ResponseEntity<PetResponseDto> updatePet(
+    @PatchMapping(value = "/{petId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public CompletableFuture<ResponseEntity<PetResponseDto>> updatePet(
             @PathVariable Long petId,
             @RequestHeader("Authorization") String token,
-            @RequestBody @Valid PetUpdateDto updateDto) {
+            @RequestPart(value = "petData", required = false) String petDataJson,
+            @RequestPart(value = "petImage", required = false) MultipartFile petImage) {
 
         Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        return ResponseEntity.ok(petService.updatePet(petId, userId, updateDto));
+
+        PetUpdateDto updateDto;
+        try {
+            updateDto = (petDataJson != null && !petDataJson.isBlank())
+                    ? objectMapper.readValue(petDataJson, PetUpdateDto.class)
+                    : new PetUpdateDto();
+        } catch (JsonProcessingException e) {
+            return CompletableFuture.completedFuture(ResponseEntity.badRequest().build());
+        }
+
+        return petService.updatePet(petId, userId, updateDto, petImage)
+                .thenApply(ResponseEntity::ok);
     }
 
     /**
      * 반려동물 삭제
      */
     @DeleteMapping("/{petId}")
-    public ResponseEntity<Map<String, String>> deletePet(@PathVariable Long petId, @RequestHeader("Authorization") String token) {
+    public CompletableFuture<ResponseEntity<Map<String, String>>> deletePet(
+            @PathVariable Long petId,
+            @RequestHeader("Authorization") String token) {
+
         Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        petService.deletePet(petId, userId);
-        return ResponseEntity.ok(Map.of("message", "반려동물이 삭제되었습니다."));
+
+        return petService.deletePet(petId, userId)
+                .thenApply(ignored -> ResponseEntity.ok(Map.of("message", "반려동물이 삭제되었습니다.")));
     }
 }

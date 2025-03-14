@@ -31,7 +31,7 @@ public class Pet {
     private String petImg;
 
     @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id")
     private Member member;
 
