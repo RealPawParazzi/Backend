@@ -6,7 +6,6 @@ import lombok.*;
 import pawparazzi.back.member.entity.Member;
 
 import java.time.LocalDate;
-import java.util.Date;
 
 @Entity
 @Getter
@@ -16,7 +15,7 @@ import java.util.Date;
 public class Pet {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long petId;
 
     @Column(nullable = false)
@@ -36,18 +35,18 @@ public class Pet {
     @JoinColumn(name = "user_id")
     private Member member;
 
-//    public void setMember(Member member) {
-//        this.member = member;
-//        if(!member.getPets().contains(this)) {
-//            member.getPets().add(this);
-//        }
-//    }
-
     public void setMember(Member member) {
         this.member = member;
-        // 이미 포함되어 있는지 확인
-        if(member != null && !member.getPets().contains(this)) {
+        if (member != null && !member.getPets().contains(this)) {
             member.getPets().add(this);
         }
+    }
+
+    public Pet(String name, Type type, LocalDate birthDate, String petImg, Member member) {
+        this.name = name;
+        this.type = type;
+        this.birthDate = birthDate;
+        this.petImg = petImg;
+        this.member = member;
     }
 }

@@ -31,7 +31,6 @@ public class MemberController {
 
     private final JwtUtil jwtUtil;
     private final MemberService memberService;
-    private final S3AsyncService s3AsyncService;
     private final ObjectMapper objectMapper;
 
 
@@ -39,22 +38,21 @@ public class MemberController {
      * 회원 가입
      */
     @PostMapping(value = "/signup", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<String> registerUser(
+    public CompletableFuture<ResponseEntity<String>> registerUser(
             @RequestPart(value = "profileImage", required = false) MultipartFile profileImage,
             @RequestPart("userData") String userDataJson) {
 
         // JSON 데이터를 DTO로 변환
-        ObjectMapper objectMapper = new ObjectMapper();
         SignUpRequestDto request;
         try {
             request = objectMapper.readValue(userDataJson, SignUpRequestDto.class);
         } catch (JsonProcessingException e) {
-            return ResponseEntity.badRequest().body("Invalid JSON format");
+            return CompletableFuture.completedFuture(ResponseEntity.badRequest().body("Invalid JSON format"));
         }
 
-        // 회원가입 처리
-        memberService.registerUser(request, profileImage);
-        return ResponseEntity.ok("회원가입 성공");
+        // 비동기 회원가입 처리 후 응답 반환
+        return memberService.registerUser(request, profileImage)
+                .thenApply(unused -> ResponseEntity.ok("회원가입 성공"));
     }
 
     /**
@@ -81,7 +79,7 @@ public class MemberController {
      * 사용자 정보 수정
      */
     @PatchMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<UpdateMemberResponseDto> updateMember(
+    public CompletableFuture<ResponseEntity<UpdateMemberResponseDto>> updateMember(
             @RequestHeader("Authorization") String token,
             @RequestPart(value = "profileImage", required = false) MultipartFile profileImage,
             @RequestPart(value = "userData", required = false) String userDataJson) {
@@ -94,10 +92,10 @@ public class MemberController {
                     ? new UpdateMemberRequestDto()
                     : objectMapper.readValue(userDataJson, UpdateMemberRequestDto.class);
 
-            UpdateMemberResponseDto updatedMember = memberService.updateMember(memberId, request, profileImage);
-            return ResponseEntity.ok(updatedMember);
+            return memberService.updateMember(memberId, request, profileImage)
+                    .thenApply(ResponseEntity::ok);
         } catch (JsonProcessingException e) {
-            return ResponseEntity.badRequest().body(null);
+            return CompletableFuture.completedFuture(ResponseEntity.badRequest().body(null));
         }
     }
 

@@ -4,7 +4,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import pawparazzi.back.pet.entity.Pet;
 import pawparazzi.back.pet.entity.Type;
 
 import java.time.LocalDate;
@@ -22,5 +21,4 @@ public class PetRegisterRequestDto {
     @NotNull
     private LocalDate birthDate;
 
-    private String petImg;
 }
