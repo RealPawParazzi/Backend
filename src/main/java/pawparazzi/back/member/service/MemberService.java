@@ -7,6 +7,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import pawparazzi.back.S3.S3UploadUtil;
 import pawparazzi.back.S3.service.S3AsyncService;
 import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.board.repository.BoardMongoRepository;
@@ -25,6 +26,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 
@@ -38,12 +40,13 @@ public class MemberService {
     private final BoardRepository boardRepository;
     private final BoardMongoRepository boardMongoRepository;
     private final S3AsyncService s3AsyncService;
+    private final S3UploadUtil s3UploadUtil;
 
     /**
      * 회원가입
      */
     @Transactional
-    public void registerUser(SignUpRequestDto request, MultipartFile profileImage) {
+    public CompletableFuture<Void> registerUser(SignUpRequestDto request, MultipartFile profileImage) {
         if (memberRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");
         }
@@ -54,19 +57,16 @@ public class MemberService {
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 
-        // 프로필 이미지 업로드 (비동기)
-        String profileImageUrl = "https://default-image-url.com/default-profile.png";
-        if (profileImage != null && !profileImage.isEmpty()) {
-            try {
-                String fileName = "profile_images/" + request.getNickName() + "_" + System.currentTimeMillis();
-                profileImageUrl = s3AsyncService.uploadFile(fileName, profileImage.getBytes(), profileImage.getContentType()).join();
-            } catch (IOException e) {
-                throw new RuntimeException("파일 업로드 실패: " + e.getMessage());
-            }
-        }
+        // 프로필 이미지 업로드 (비동기 처리)
+        String pathPrefix = "profile_images/" + request.getNickName();
+        String defaultImageUrl = "https://default-image-url.com/default-profile.png";
+        CompletableFuture<String> profileImageUrlFuture = s3UploadUtil.uploadImageAsync(profileImage, pathPrefix, defaultImageUrl);
 
-        Member member = new Member(request.getEmail(), encodedPassword, request.getNickName(), profileImageUrl, request.getName());
-        memberRepository.save(member);
+        // 업로드 완료 후 Member 저장
+        return profileImageUrlFuture.thenAccept(profileImageUrl -> {
+            Member member = new Member(request.getEmail(), encodedPassword, request.getNickName(), profileImageUrl, request.getName());
+            memberRepository.save(member);
+        });
     }
 
     /**
@@ -98,8 +98,7 @@ public class MemberService {
     /**
      * 회원 정보 수정
      */
-    @Transactional
-    public UpdateMemberResponseDto updateMember(Long memberId, UpdateMemberRequestDto request, MultipartFile newProfileImage) {
+    public CompletableFuture<UpdateMemberResponseDto> updateMember(Long memberId, UpdateMemberRequestDto request, MultipartFile newProfileImage) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new EntityNotFoundException("회원 정보를 찾을 수 없습니다."));
 
@@ -117,36 +116,42 @@ public class MemberService {
             member.setName(request.getName());
         }
 
-        // 프로필 이미지 변경
-        if (newProfileImage != null && !newProfileImage.isEmpty()) {
-            try {
-                // 기존 프로필 이미지 삭제
-                if (member.getProfileImageUrl() != null) {
-                    String oldFileName = extractFileName(member.getProfileImageUrl());
-                    s3AsyncService.deleteFile("profile_images/" + oldFileName);
-                }
+        String pathPrefix = "profile_images/" + member.getNickName();
+        String defaultImageUrl = "https://default-image-url.com/default-profile.png";
+        String oldProfileImageUrl = member.getProfileImageUrl();
 
-                String newFileName = "profile_images/" + member.getNickName() + "_" + System.currentTimeMillis();
-                String contentType = newProfileImage.getContentType();
-                byte[] fileData = newProfileImage.getBytes();
+        // 새로운 프로필 이미지 업로드
+        CompletableFuture<String> profileImageUrlFuture = s3UploadUtil.uploadImageAsync(newProfileImage, pathPrefix, defaultImageUrl);
 
-                String newProfileImageUrl = s3AsyncService
-                        .uploadFile(newFileName, fileData, contentType)
-                        .join();
+        return profileImageUrlFuture.thenCompose(newProfileImageUrl -> {
+            member.setProfileImageUrl(newProfileImageUrl);
+            memberRepository.save(member);
 
-                member.setProfileImageUrl(newProfileImageUrl);
-            } catch (IOException e) {
-                throw new RuntimeException("프로필 이미지 변경 실패: " + e.getMessage());
+            // 기존 프로필 이미지 삭제
+            if (oldProfileImageUrl != null && !oldProfileImageUrl.equals(defaultImageUrl)) {
+                String oldFileName = extractFileName(oldProfileImageUrl);
+                return s3AsyncService.deleteFile("profile_images/" + oldFileName)
+                        .exceptionally(ex -> {
+                            System.err.println("S3 파일 삭제 실패: " + ex.getMessage());
+                            return null;
+                        })
+                        .thenApply(ignored -> new UpdateMemberResponseDto(
+                                member.getId(),
+                                member.getEmail(),
+                                member.getNickName(),
+                                member.getName(),
+                                member.getProfileImageUrl()
+                        ));
             }
-        }
 
-        return new UpdateMemberResponseDto(
-                member.getId(),
-                member.getEmail(),
-                member.getNickName(),
-                member.getName(),
-                member.getProfileImageUrl()
-        );
+            return CompletableFuture.completedFuture(new UpdateMemberResponseDto(
+                    member.getId(),
+                    member.getEmail(),
+                    member.getNickName(),
+                    member.getName(),
+                    member.getProfileImageUrl()
+            ));
+        });
     }
 
     public String extractFileName(String imageUrl) {

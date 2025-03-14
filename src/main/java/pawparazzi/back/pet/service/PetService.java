@@ -1,20 +1,23 @@
 package pawparazzi.back.pet.service;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import pawparazzi.back.S3.S3UploadUtil;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
-import pawparazzi.back.member.service.MemberService;
 import pawparazzi.back.pet.dto.PetRegisterRequestDto;
+import pawparazzi.back.pet.dto.PetResponseDto;
 import pawparazzi.back.pet.dto.PetUpdateDto;
 import pawparazzi.back.pet.entity.Pet;
 import pawparazzi.back.pet.repository.PetRepository;
-import pawparazzi.back.security.util.JwtUtil;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -23,89 +26,87 @@ public class PetService {
 
     private final PetRepository petRepository;
     private final MemberRepository memberRepository;
-    private final JwtUtil jwtUtil;
+    private final S3UploadUtil s3UploadUtil;
 
-    //펫 등록
-
+    /**
+     * 반려동물 등록
+     */
     @Transactional
-    public Pet registerPet(PetRegisterRequestDto registerDto, String token) {
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-
+    public CompletableFuture<Pet> registerPet(Long userId, PetRegisterRequestDto registerDto, MultipartFile petImage) {
         Member member = memberRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
 
-        Pet pet = new Pet();
-        pet.setName(registerDto.getName());
-        pet.setType(registerDto.getType());
-        pet.setBirthDate(registerDto.getBirthDate());
-        pet.setPetImg(registerDto.getPetImg());
-        pet.setMember(member);
+        String pathPrefix = "pet_images/" + member.getNickName();
+        String defaultImageUrl = "https://default-image-url.com/default-pet.png";
 
-        return petRepository.save(pet);
+        CompletableFuture<String> petImageUrlFuture = s3UploadUtil.uploadImageAsync(petImage, pathPrefix, defaultImageUrl);
+
+        return petImageUrlFuture.thenApply(petImageUrl -> {
+            Pet pet = new Pet(registerDto.getName(), registerDto.getType(), registerDto.getBirthDate(), petImageUrl, member);
+            return petRepository.save(pet);
+        });
     }
 
-    //펫 조회
+    /**
+     * 회원별 반려동물 목록 조회
+     */
     @Transactional(readOnly = true)
-    public List<Pet> getPetsByMember(String token) {
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-
+    public List<PetResponseDto> getPetsByMember(Long userId) {
         memberRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        System.out.println("userId = " + userId);
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
 
-        List<Pet> pets = petRepository.findPetsWithMemberByUserId(userId);
+        return petRepository.findByMemberId(userId).stream()
+                .map(PetResponseDto::new)
+                .collect(Collectors.toList());
+    }
 
-        for(Pet pet : pets) {
-            System.out.println("pet.getName() = " + pet.getName());
-            System.out.println("pet.getMember().getNickName() = " + pet.getMember().getNickName());
-            System.out.println("pet.getMember().getNickName() = " + pet.getMember().getEmail());
+    /**
+     * 반려동물 상세 조회
+     */
+    @Transactional(readOnly = true)
+    public PetResponseDto getPetById(Long petId, Long userId) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new EntityNotFoundException("반려동물을 찾을 수 없습니다."));
+
+        if (!pet.getMember().getId().equals(userId)) {
+            throw new IllegalArgumentException("해당 반려동물을 조회할 권한이 없습니다.");
         }
 
-        for (Pet pet : pets) {
-            if (pet.getMember() != null) {
-                // Member 엔티티 강제 초기화
-                pet.getMember().getNickName();
-                pet.getMember().getEmail();
-            }
-        }
-        return pets;
+        return new PetResponseDto(pet);
     }
 
-    //펫 상세조회
-    @Transactional(readOnly = true)
-    public Pet getPetById(String token, Long petId) {
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-
-        memberRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-
-        return petRepository.findById(petId)
-                .orElseThrow(() -> new IllegalArgumentException("Pet not found"));
-    }
-
+    /**
+     * 반려동물 정보 수정
+     */
     @Transactional
-    public Pet updatePet(Long petId, PetUpdateDto updateDto, String token) {
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+    public PetResponseDto updatePet(Long petId, Long userId, PetUpdateDto updateDto) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new EntityNotFoundException("반려동물을 찾을 수 없습니다."));
 
-        memberRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        Pet pet = getPetById(token, petId);
+        if (!pet.getMember().getId().equals(userId)) {
+            throw new IllegalArgumentException("해당 반려동물을 수정할 권한이 없습니다.");
+        }
+
         pet.setName(updateDto.getName());
         pet.setType(updateDto.getType());
         pet.setBirthDate(updateDto.getBirthDate());
         pet.setPetImg(updateDto.getPetImg());
-        return petRepository.save(pet);
+
+        return new PetResponseDto(petRepository.save(pet));
     }
 
+    /**
+     * 반려동물 삭제
+     */
     @Transactional
-    public void deletePet(Long petId, String token) {
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+    public void deletePet(Long petId, Long userId) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new EntityNotFoundException("반려동물을 찾을 수 없습니다."));
 
-        memberRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        Pet pet = getPetById(token, petId);
-        pet.getMember().getPets().remove(pet);
+        if (!pet.getMember().getId().equals(userId)) {
+            throw new IllegalArgumentException("해당 반려동물을 삭제할 권한이 없습니다.");
+        }
+
         petRepository.delete(pet);
     }
-
 }
