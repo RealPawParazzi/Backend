@@ -90,4 +90,19 @@ public class WalkController {
             return ResponseEntity.notFound().build();
         }
     }
+
+    //날짜와 펫별 산책 기록 조회
+    @GetMapping("/pet/{petId}/date")
+    public ResponseEntity<List<WalkResponseDto>> getWalkByPetAndDate(
+            @PathVariable Long petId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime date,
+            @RequestHeader("Authorization") String token) {
+        try {
+            Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+            List<WalkResponseDto> walks = walkService.getWalksByPetIdAndDate(petId, date, userId);
+            return ResponseEntity.ok(walks);
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }

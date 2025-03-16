@@ -91,4 +91,22 @@ public class WalkService {
                 .map(walkMapper::toDto)
                 .collect(Collectors.toList());
     }
+
+    @Transactional(readOnly = true)
+    public List<WalkResponseDto> getWalksByPetIdAndDate(Long petId, ZonedDateTime date, Long userId) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> new NoSuchElementException("Pet not found with Id: " + petId));
+
+        // Verify pet ownership
+        if (!pet.getMember().getId().equals(userId)) {
+            throw new NoSuchElementException("You don't have permission to access this pet's walks");
+        }
+
+        // Query walks by both petId and date
+        List<Walk> walks = walkRepository.findByPetIdAndDate(petId, date);
+
+        return walks.stream()
+                .map(walkMapper::toDto)
+                .collect(Collectors.toList());
+    }
 }
