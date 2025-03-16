@@ -57,7 +57,11 @@ public class AuthController {
             Long memberId = memberService.handleKakaoLogin(kakaoUser);
             String jwtToken = jwtUtil.generateIdToken(memberId);
 
-            return ResponseEntity.ok(new JwtResponseDto(jwtToken));
+            String frontendRedirectUrl = "http://localhost:8082/auth/success?token=" + jwtToken;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setLocation(URI.create(frontendRedirectUrl));
+            return ResponseEntity.status(302).headers(headers).build();
 
         } catch (Exception e) {
             log.error("카카오 로그인 처리 중 오류 발생: {}", e.getMessage());
