@@ -11,6 +11,7 @@ import pawparazzi.back.walk.entity.Walk;
 import pawparazzi.back.walk.entity.WalkMapper;
 import pawparazzi.back.walk.repository.WalkRepository;
 
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -64,7 +65,7 @@ public class WalkService {
     }
 
     @Transactional(readOnly = true)
-    public List<WalkResponseDto> getWalksByDate(ZonedDateTime date, Long userId) {
+    public List<WalkResponseDto> getWalksByDate(LocalDateTime date, Long userId) {
         List<Walk> walks = walkRepository.findByDate(date);
 
         // userId로 필터링: 해당 사용자의 반려동물 산책 기록만 반환
@@ -93,7 +94,7 @@ public class WalkService {
     }
 
     @Transactional(readOnly = true)
-    public List<WalkResponseDto> getWalksByPetIdAndDate(Long petId, ZonedDateTime date, Long userId) {
+    public List<WalkResponseDto> getWalksByPetIdAndDate(Long petId, LocalDateTime date, Long userId) {
         Pet pet = petRepository.findById(petId)
                 .orElseThrow(() -> new NoSuchElementException("Pet not found with Id: " + petId));
 

@@ -12,6 +12,7 @@ import pawparazzi.back.walk.entity.Walk;
 import pawparazzi.back.walk.repository.WalkRepository;
 import pawparazzi.back.walk.service.WalkService;
 
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -80,7 +81,7 @@ public class WalkController {
     //날짜별 산책 기록 조회
     @GetMapping("/date")
     public ResponseEntity<List<WalkResponseDto>> getWalkByPetDate(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime date,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date,
             @RequestHeader("Authorization") String token){
         try{
             Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
@@ -95,7 +96,7 @@ public class WalkController {
     @GetMapping("/pet/{petId}/date")
     public ResponseEntity<List<WalkResponseDto>> getWalkByPetAndDate(
             @PathVariable Long petId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime date,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date,
             @RequestHeader("Authorization") String token) {
         try {
             Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));

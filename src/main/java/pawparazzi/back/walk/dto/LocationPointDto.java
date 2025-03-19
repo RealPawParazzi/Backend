@@ -3,6 +3,7 @@ package pawparazzi.back.walk.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 
 @Getter
@@ -14,7 +15,7 @@ public class LocationPointDto {
 
     private Double longitude;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "UTC")
-    private ZonedDateTime timestamp;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss", timezone = "UTC")
+    private LocalDateTime timestamp;
 
 }

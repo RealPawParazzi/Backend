@@ -5,6 +5,7 @@ import lombok.Data;
 import pawparazzi.back.pet.entity.Pet;
 import pawparazzi.back.pet.entity.Type;
 
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
 
@@ -13,11 +14,11 @@ public class WalkResponseDto {
     private Long id;
     private PetDto pet;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "UTC")
-    private ZonedDateTime startTime;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime startTime;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ssXXX", timezone = "UTC")
-    private ZonedDateTime endTime;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime endTime;
 
     private List<LocationPointDto> route;
     private Double distance;
@@ -38,7 +39,7 @@ public class WalkResponseDto {
         }
     }
 
-    public WalkResponseDto(Long id, Pet pet, ZonedDateTime startTime, ZonedDateTime endTime, List<LocationPointDto> route, Double distance, Double averageSpeed) {
+    public WalkResponseDto(Long id, Pet pet, LocalDateTime startTime, LocalDateTime  endTime, List<LocationPointDto> route, Double distance, Double averageSpeed) {
         this.id = id;
         this.pet = new PetDto(pet);
         this.startTime = startTime;

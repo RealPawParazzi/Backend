@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import pawparazzi.back.pet.entity.Pet;
 
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 
 @Entity
@@ -27,7 +28,7 @@ public class LocationPoint {
     private Double longitude;
 
     @Column(nullable = false)
-    private ZonedDateTime timestamp;
+    private LocalDateTime timestamp;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "walk_id")
