@@ -5,11 +5,12 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.*;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 public class S3AsyncService {
@@ -46,18 +47,35 @@ public class S3AsyncService {
     /**
      * S3에서 비동기적으로 파일 삭제
      */
-    @Async
-    public CompletableFuture<Void> deleteFile(String fileName) {
-        DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
-                .bucket(bucketName)
-                .key(fileName)
-                .build();
+    public CompletableFuture<Void> deleteFile(String key) {
+        return s3AsyncClient.listObjectVersions(ListObjectVersionsRequest.builder()
+                        .bucket(bucketName)
+                        .prefix(key)
+                        .build())
+                .thenCompose(response -> {
+                    List<ObjectIdentifier> objectsToDelete = response.versions().stream()
+                            .map(version -> ObjectIdentifier.builder()
+                                    .key(version.key())
+                                    .versionId(version.versionId())
+                                    .build())
+                            .collect(Collectors.toList());
 
-        return s3AsyncClient.deleteObject(deleteObjectRequest)
-                .thenAccept(response -> {
-                    if (!response.sdkHttpResponse().isSuccessful()) {
-                        throw new RuntimeException("S3 삭제 실패: " + response.sdkHttpResponse().statusCode());
+                    if (objectsToDelete.isEmpty()) {
+                        System.out.println("삭제할 버전 없음: " + key);
+                        return CompletableFuture.completedFuture(null);
                     }
+
+                    DeleteObjectsRequest deleteObjectsRequest = DeleteObjectsRequest.builder()
+                            .bucket(bucketName)
+                            .delete(Delete.builder().objects(objectsToDelete).build())
+                            .build();
+
+                    return s3AsyncClient.deleteObjects(deleteObjectsRequest)
+                            .thenRun(() -> System.out.println("S3 삭제 성공 (버전 포함): " + key))
+                            .exceptionally(ex -> {
+                                System.err.println("S3 삭제 실패: " + ex.getMessage());
+                                return null;
+                            });
                 });
     }
 
@@ -78,4 +96,38 @@ public class S3AsyncService {
     public String extractFileName(String imageUrl) {
         return imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
     }
+
+
+    public List<String> listFilesInFolder(String folderPath) {
+        ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
+                .bucket(bucketName)
+                .prefix(folderPath)
+                .build();
+
+        ListObjectsV2Response listResponse = s3AsyncClient.listObjectsV2(listRequest).join();
+
+        return listResponse.contents().stream()
+                .map(s3Object -> s3Object.key())
+                .collect(Collectors.toList());
+    }
+
+    public CompletableFuture<Void> deleteFiles(List<String> fileKeys) {
+        if (fileKeys.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        DeleteObjectsRequest deleteRequest = DeleteObjectsRequest.builder()
+                .bucket(bucketName)
+                .delete(Delete.builder()
+                        .objects(fileKeys.stream()
+                                .map(key -> ObjectIdentifier.builder().key(key).build())
+                                .collect(Collectors.toList()))
+                        .build())
+                .build();
+
+        return s3AsyncClient.deleteObjects(deleteRequest)
+                .thenApply(response -> null);
+    }
+
+
 }

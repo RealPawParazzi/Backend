@@ -22,7 +22,11 @@ public class BoardUpdateRequestDto {
 
     private String titleImage;
 
+    private String titleContent;
+
     private List<ContentDto> contents;
+
+    private List<String> deleteMediaUrls;
 
 
     @Getter
