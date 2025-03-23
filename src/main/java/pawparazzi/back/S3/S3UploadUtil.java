@@ -1,5 +1,6 @@
 package pawparazzi.back.S3;
 
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import pawparazzi.back.S3.service.S3AsyncService;
@@ -16,6 +17,7 @@ public class S3UploadUtil {
         this.s3AsyncService = s3AsyncService;
     }
 
+    @Async
     public CompletableFuture<String> uploadImageAsync(MultipartFile file, String pathPrefix, String defaultImageUrl) {
         if (file == null || file.isEmpty()) {
             return CompletableFuture.completedFuture(defaultImageUrl);

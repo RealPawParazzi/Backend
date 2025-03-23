@@ -136,7 +136,7 @@ public class PetService {
         // 먼저 DB에서 반려동물 삭제
         petRepository.delete(pet);
 
-        // S3에서 기존 반려동물 이미지 삭제 (기본 이미지가 아닌 경우)
+        // S3에서 기존 반려동물 이미지 삭제
         if (petImageUrl != null && !petImageUrl.equals(defaultImageUrl)) {
             String fileName = extractFileName(petImageUrl);
             return s3AsyncService.deleteFile("pet_images/" + fileName)

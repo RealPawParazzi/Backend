@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.web.multipart.MultipartFile;
 import pawparazzi.back.board.entity.BoardVisibility;
 
 import java.util.List;
@@ -22,9 +23,11 @@ public class BoardCreateRequestDto {
 
     private List<ContentDto> contents;
 
-    private String titleImage;
-
     private String titleContent;
+
+    private MultipartFile titleImage;
+
+    private List<MultipartFile> mediaFiles;
 
 
     @Getter

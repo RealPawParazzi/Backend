@@ -4,6 +4,8 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import pawparazzi.back.S3.service.S3AsyncService;
 import pawparazzi.back.board.dto.BoardCreateRequestDto;
 import pawparazzi.back.board.dto.BoardListResponseDto;
 import pawparazzi.back.board.dto.BoardDetailDto;
@@ -21,7 +23,10 @@ import pawparazzi.back.likes.repository.LikeRepository;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,58 +41,100 @@ public class BoardService {
     private final CommentLikeRepository commentLikeRepository;
     private final ReplyRepository replyRepository;
     private final ReplyLikeRepository replyLikeRepository;
+    private final S3AsyncService s3AsyncService;
+
 
     /**
      * 게시물 등록
      */
     @Transactional
-    public BoardDetailDto createBoard(BoardCreateRequestDto requestDto, Long userId) {
+    public BoardDetailDto createBoard(BoardCreateRequestDto requestDto, Long userId, MultipartFile titleImageFile) {
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-
-        List<BoardDocument.ContentDto> contents = requestDto.getContents().stream()
-                .map(dto -> new BoardDocument.ContentDto(dto.getType(), dto.getValue()))
-                .collect(Collectors.toList());
-
-        String titleImage = requestDto.getTitleImage();
-        if (titleImage == null || titleImage.isBlank()) {
-            titleImage = contents.stream()
-                    .filter(c -> "image".equals(c.getType()))
-                    .map(BoardDocument.ContentDto::getValue)
-                    .findFirst()
-                    .orElse(null);
-        }
-
-        String firstText = contents.stream()
-                .filter(c -> "text".equals(c.getType()))
-                .map(BoardDocument.ContentDto::getValue)
-                .findFirst()
-                .orElse(null);
 
         if (requestDto.getVisibility() == null) {
             throw new IllegalArgumentException("게시물 공개 설정은 필수 입력값입니다.");
         }
 
-        // MongoDB에 게시물 저장
-        BoardDocument boardDocument = new BoardDocument(null, requestDto.getTitle(), titleImage, firstText, contents);
-        boardMongoRepository.save(boardDocument);
+        // MongoDB에 게시물 저장 (임시 저장)
+        BoardDocument boardDocument = new BoardDocument(null, requestDto.getTitle(), null, requestDto.getTitleContent(), new ArrayList<>());
+        boardDocument = boardMongoRepository.save(boardDocument);
 
         // MySQL에 게시물 저장
         Board board = new Board(member, boardDocument.getId(), requestDto.getVisibility());
         boardRepository.save(board);
 
-        // MongoDB에 MySQL ID 업데이트
+        // 컨텐츠 변환
+        List<BoardDocument.ContentDto> contents = requestDto.getContents().stream()
+                .map(dto -> new BoardDocument.ContentDto(dto.getType(), dto.getValue()))
+                .collect(Collectors.toList());
+
+        // S3 비동기 업로드
+        CompletableFuture<List<String>> uploadFuture = uploadFilesToS3(requestDto.getMediaFiles(), board.getId());
+
+        // S3 업로드된 이미지 URL을 MongoDB 컨텐츠에 추가
+        List<String> uploadedUrls = uploadFuture.join();
+        uploadedUrls.forEach(url -> contents.add(new BoardDocument.ContentDto("File", url)));
+
+        String titleImage = getTitleImageUrl(titleImageFile, uploadedUrls);
+
         boardDocument.setMysqlId(board.getId());
+        boardDocument.setContents(contents);
+        boardDocument.setTitleImage(titleImage);
         boardMongoRepository.save(boardDocument);
 
         return convertToBoardDetailDto(board, boardDocument);
     }
 
     /**
+     * 비동기 방식으로 S3에 파일 업로드
+     */
+    private CompletableFuture<List<String>> uploadFilesToS3(List<MultipartFile> mediaFiles, Long boardId) {
+        if (mediaFiles == null || mediaFiles.isEmpty()) {
+            return CompletableFuture.completedFuture(new ArrayList<>());
+        }
+
+        List<CompletableFuture<String>> uploadFutures = mediaFiles.stream()
+                .map(file -> {
+                    String fileName = "board_images/" + boardId + "/" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
+                    try {
+                        return s3AsyncService.uploadFile(fileName, file.getBytes(), file.getContentType());
+                    } catch (IOException e) {
+                        return CompletableFuture.<String>failedFuture(new RuntimeException("파일 업로드 실패: " + e.getMessage()));
+                    }
+                })
+                .collect(Collectors.toList());
+
+        return CompletableFuture.allOf(uploadFutures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> uploadFutures.stream()
+                        .map(CompletableFuture::join)
+                        .toList()
+                );
+    }
+
+    /**
+     * titleImage
+     */
+    private String getTitleImageUrl(MultipartFile titleImageFile, List<String> uploadedUrls) {
+        if (titleImageFile == null || titleImageFile.isEmpty()) {
+            return null;
+        }
+        String fileName = titleImageFile.getOriginalFilename();
+        return uploadedUrls.stream()
+                .filter(url -> url.contains(fileName))
+                .findFirst()
+                .orElse(null);
+    }
+
+
+    /**
      * 게시물 수정
      */
     @Transactional
-    public BoardDetailDto updateBoard(Long boardId, Long userId, BoardUpdateRequestDto requestDto) {
+    public CompletableFuture<BoardDetailDto> updateBoard(Long boardId, Long userId,
+                                                         BoardUpdateRequestDto requestDto,
+                                                         List<MultipartFile> mediaFiles,
+                                                         MultipartFile titleImageFile) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new EntityNotFoundException("게시물을 찾을 수 없습니다."));
 
@@ -98,37 +145,53 @@ public class BoardService {
         BoardDocument boardDocument = boardMongoRepository.findByMysqlId(boardId)
                 .orElseThrow(() -> new EntityNotFoundException("MongoDB에서 해당 게시글을 찾을 수 없습니다."));
 
-        if (requestDto.getTitle() != null && !requestDto.getTitle().isBlank()) {
-            boardDocument.setTitle(requestDto.getTitle());
-        }
+        String folderPath = "board_images/" + boardId + "/";
+        List<String> existingFileKeys = s3AsyncService.listFilesInFolder(folderPath);
 
-        if (requestDto.getTitleImage() != null && !requestDto.getTitleImage().isBlank()) {
-            boardDocument.setTitleImage(requestDto.getTitleImage());
-        }
+        CompletableFuture<Void> deleteFuture = existingFileKeys.isEmpty()
+                ? CompletableFuture.completedFuture(null)
+                : s3AsyncService.deleteFiles(existingFileKeys)
+                .exceptionally(ex -> {
+                    System.err.println("S3 기존 이미지 삭제 실패: " + ex.getMessage());
+                    return null;
+                });
 
-        if (requestDto.getContents() != null && !requestDto.getContents().isEmpty()) {
-            List<BoardDocument.ContentDto> updatedContents = requestDto.getContents().stream()
-                    .map(dto -> new BoardDocument.ContentDto(dto.getType(), dto.getValue()))
-                    .collect(Collectors.toList());
-            boardDocument.setContents(updatedContents);
+        boardDocument.setContents(
+                boardDocument.getContents().stream()
+                        .filter(content -> !"image".equals(content.getType()))
+                        .toList()
+        );
 
-            String firstText = updatedContents.stream()
-                    .filter(c -> "text".equals(c.getType()))
-                    .map(BoardDocument.ContentDto::getValue)
-                    .findFirst()
-                    .orElse(null);
-            boardDocument.setTitleContent(firstText);
-        }
+        CompletableFuture<List<String>> uploadFuture = (mediaFiles == null || mediaFiles.isEmpty())
+                ? CompletableFuture.completedFuture(new ArrayList<>())
+                : uploadFilesToS3(mediaFiles, board.getId());
 
-        if (requestDto.getVisibility() != null) {
-            board.setVisibility(requestDto.getVisibility());
-        }
+        return CompletableFuture.allOf(deleteFuture, uploadFuture)
+                .thenCompose(ignored -> uploadFuture.thenApply(uploadedUrls -> {
+                    List<BoardDocument.ContentDto> updatedContents = new ArrayList<>();
+                    if (requestDto.getContents() != null && !requestDto.getContents().isEmpty()) {
+                        updatedContents.addAll(requestDto.getContents().stream()
+                                .map(dto -> new BoardDocument.ContentDto(dto.getType(), dto.getValue()))
+                                .toList());
+                    }
+                    uploadedUrls.forEach(url -> updatedContents.add(new BoardDocument.ContentDto("image", url)));
 
-        // MongoDB , MySQL 업데이트
-        boardMongoRepository.save(boardDocument);
-        boardRepository.save(board);
+                    boardDocument.setContents(updatedContents);
 
-        return convertToBoardDetailDto(board, boardDocument);
+                    String titleImage = getTitleImageUrl(titleImageFile, uploadedUrls);
+                    boardDocument.setTitleImage(titleImage);
+
+                    boardDocument.setTitleContent(requestDto.getTitleContent());
+
+                    if (requestDto.getVisibility() != null) {
+                        board.setVisibility(requestDto.getVisibility());
+                    }
+
+                    boardMongoRepository.save(boardDocument);
+                    boardRepository.save(board);
+
+                    return convertToBoardDetailDto(board, boardDocument);
+                }));
     }
 
     /**
@@ -230,7 +293,6 @@ public class BoardService {
             dto.setAuthor(authorDto);
         }
 
-        // MongoDB에서 가져온 contents 데이터를 변환 후 저장
         dto.setContents(boardDocument.getContents().stream()
                 .map(content -> new BoardDetailDto.ContentDto(content.getType(), content.getValue()))
                 .collect(Collectors.toList()));
@@ -243,13 +305,24 @@ public class BoardService {
      * 게시물 삭제
      */
     @Transactional
-    public void deleteBoard(Long boardId, Long userId) {
+    public CompletableFuture<Void> deleteBoard(Long boardId, Long userId) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시물을 찾을 수 없습니다."));
 
-        if (!board.getAuthorId().equals(userId)) {  // getAuthorId() 사용 가능
+        if (!board.getAuthorId().equals(userId)) {
             throw new IllegalArgumentException("본인이 작성한 게시물만 삭제할 수 있습니다.");
         }
+
+        String folderPath = "board_images/" + boardId + "/";
+        List<String> fileKeys = s3AsyncService.listFilesInFolder(folderPath);
+
+        CompletableFuture<Void> deleteS3Future = fileKeys.isEmpty()
+                ? CompletableFuture.completedFuture(null)
+                : s3AsyncService.deleteFiles(fileKeys)
+                .exceptionally(ex -> {
+                    System.err.println("게시물 이미지 삭제 실패: " + ex.getMessage());
+                    return null;
+                });
 
         replyRepository.findByBoardId(boardId).forEach(reply -> {
             replyLikeRepository.deleteByReplyId(reply.getId());
@@ -259,8 +332,9 @@ public class BoardService {
         commentLikeRepository.deleteByBoardId(boardId);
         commentRepository.deleteByBoardId(boardId);
         likeRepository.deleteByBoardId(boardId);
-
         boardMongoRepository.deleteByMysqlId(board.getId());
         boardRepository.delete(board);
+
+        return deleteS3Future;
     }
 }
