@@ -23,6 +23,7 @@ public class BoardController {
 
     private final BoardService boardService;
     private final JwtUtil jwtUtil;
+    private final ObjectMapper objectMapper;
 
     /**
      * 게시물 등록
@@ -37,7 +38,6 @@ public class BoardController {
 
         Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
 
-        ObjectMapper objectMapper = new ObjectMapper();
         BoardCreateRequestDto requestDto;
         try {
             requestDto = objectMapper.readValue(userDataJson, BoardCreateRequestDto.class);
@@ -84,7 +84,6 @@ public class BoardController {
         try {
             Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
 
-            ObjectMapper objectMapper = new ObjectMapper();
             BoardUpdateRequestDto requestDto = objectMapper.readValue(userDataJson, BoardUpdateRequestDto.class);
 
             requestDto.setTitleContent(titleContent);
