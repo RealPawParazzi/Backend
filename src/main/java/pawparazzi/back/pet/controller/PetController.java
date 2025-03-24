@@ -1,18 +1,21 @@
 package pawparazzi.back.pet.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import pawparazzi.back.member.entity.Member;
-import pawparazzi.back.member.service.MemberService;
+import org.springframework.web.multipart.MultipartFile;
 import pawparazzi.back.pet.dto.PetRegisterRequestDto;
 import pawparazzi.back.pet.dto.PetResponseDto;
 import pawparazzi.back.pet.dto.PetUpdateDto;
-import pawparazzi.back.pet.entity.Pet;
 import pawparazzi.back.pet.service.PetService;
+import pawparazzi.back.security.util.JwtUtil;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/pets")
@@ -20,64 +23,86 @@ import java.util.stream.Collectors;
 public class PetController {
 
     private final PetService petService;
-    private final MemberService memberService;
+    private final JwtUtil jwtUtil;
+    private final ObjectMapper objectMapper;
 
-    //펫 등록
-    @PostMapping("/register")
-    public ResponseEntity<PetResponseDto> registerPet(
-            @RequestHeader ("Authorization") String token,
-            @RequestBody PetRegisterRequestDto registerDto){
+    /**
+     * 반려동물 등록
+     */
+    @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public CompletableFuture<ResponseEntity<PetResponseDto>> registerPet(
+            @RequestHeader("Authorization") String token,
+            @RequestPart("petData") String petDataJson,
+            @RequestPart(value = "petImage", required = false) MultipartFile petImage) {
 
-        Pet pet = petService.registerPet(registerDto, token);
+        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
 
-        if(pet.getMember() != null) {
-            pet.getMember().getNickName();
-            pet.getMember().getEmail();
+        PetRegisterRequestDto registerDto;
+        try {
+            registerDto = objectMapper.readValue(petDataJson, PetRegisterRequestDto.class);
+        } catch (JsonProcessingException e) {
+            return CompletableFuture.completedFuture(ResponseEntity.badRequest().build());
         }
-        return ResponseEntity.ok(new PetResponseDto(pet));
+
+        return petService.registerPet(userId, registerDto, petImage)
+                .thenApply(ResponseEntity::ok);
     }
 
-    //회원별 전체 펫 조회
+    /**
+     * 회원별 반려동물 목록 조회
+     */
     @GetMapping("/all")
-    public ResponseEntity<List<PetResponseDto>> petList(
-            @RequestHeader("Authorization") String token
-    ){
-        List<Pet> pets = petService.getPetsByMember(token);
-        List<PetResponseDto> response = pets.stream()
-                .map(PetResponseDto::new)
-                .toList();
-
-        return ResponseEntity.ok(response);
+    public ResponseEntity<List<PetResponseDto>> getAllPets(@RequestHeader("Authorization") String token) {
+        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        List<PetResponseDto> pets = petService.getPetsByMember(userId);
+        return ResponseEntity.ok(pets);
     }
 
-    //펫 상세조회
+    /**
+     * 반려동물 상세 조회
+     */
     @GetMapping("/{petId}")
-    public ResponseEntity<PetResponseDto> getPet(
-            @PathVariable Long petId,
-            @RequestHeader("Authorization") String token){
-
-        Pet pet = petService.getPetById(token, petId);
-        return ResponseEntity.ok(new PetResponseDto(pet));
+    public ResponseEntity<PetResponseDto> getPet(@PathVariable Long petId, @RequestHeader("Authorization") String token) {
+        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        return ResponseEntity.ok(petService.getPetById(petId, userId));
     }
 
-    //반려동물 정보 수정
-    @PutMapping("/{petId}")
-    public ResponseEntity<PetResponseDto> updatePet(
+    /**
+     * 반려동물 정보 수정
+     */
+    @PatchMapping(value = "/{petId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public CompletableFuture<ResponseEntity<PetResponseDto>> updatePet(
             @PathVariable Long petId,
-            @RequestBody PetUpdateDto updateDto,
-            @RequestHeader("Authorization") String token
-    ){
-        Pet updatedPet = petService.updatePet(petId, updateDto, token);
-        return ResponseEntity.ok(new PetResponseDto(updatedPet));
+            @RequestHeader("Authorization") String token,
+            @RequestPart(value = "petData", required = false) String petDataJson,
+            @RequestPart(value = "petImage", required = false) MultipartFile petImage) {
+
+        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+
+        PetUpdateDto updateDto;
+        try {
+            updateDto = (petDataJson != null && !petDataJson.isBlank())
+                    ? objectMapper.readValue(petDataJson, PetUpdateDto.class)
+                    : new PetUpdateDto();
+        } catch (JsonProcessingException e) {
+            return CompletableFuture.completedFuture(ResponseEntity.badRequest().build());
+        }
+
+        return petService.updatePet(petId, userId, updateDto, petImage)
+                .thenApply(ResponseEntity::ok);
     }
 
-    //반려동물 삭제
+    /**
+     * 반려동물 삭제
+     */
     @DeleteMapping("/{petId}")
-    public ResponseEntity<Void> deletePet(
+    public CompletableFuture<ResponseEntity<Map<String, String>>> deletePet(
             @PathVariable Long petId,
-            @RequestHeader("Authorization") String token){
-        petService.deletePet(petId, token);
-        return ResponseEntity.noContent().build();
-    }
+            @RequestHeader("Authorization") String token) {
 
+        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+
+        return petService.deletePet(petId, userId)
+                .thenApply(ignored -> ResponseEntity.ok(Map.of("message", "반려동물이 삭제되었습니다.")));
+    }
 }

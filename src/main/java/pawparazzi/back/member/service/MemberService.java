@@ -6,6 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import pawparazzi.back.S3.S3UploadUtil;
+import pawparazzi.back.S3.service.S3AsyncService;
 import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.board.repository.BoardMongoRepository;
 import pawparazzi.back.board.repository.BoardRepository;
@@ -19,9 +22,11 @@ import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
 import pawparazzi.back.security.util.JwtUtil;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 
@@ -34,11 +39,14 @@ public class MemberService {
     private final JwtUtil jwtUtil;
     private final BoardRepository boardRepository;
     private final BoardMongoRepository boardMongoRepository;
+    private final S3AsyncService s3AsyncService;
+    private final S3UploadUtil s3UploadUtil;
 
     /**
      * 회원가입
      */
-    public void registerUser(SignUpRequestDto request) {
+    @Transactional
+    public CompletableFuture<Void> registerUser(SignUpRequestDto request, MultipartFile profileImage) {
         if (memberRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");
         }
@@ -47,11 +55,18 @@ public class MemberService {
             throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
         }
 
-        // 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 
-        Member member = new Member(request.getEmail(), encodedPassword, request.getNickName(), request.getProfileImageUrl(), request.getName());
-        memberRepository.save(member);
+        // 프로필 이미지 업로드 (비동기 처리)
+        String pathPrefix = "profile_images/" + request.getNickName();
+        String defaultImageUrl = "https://default-image-url.com/default-profile.png";
+        CompletableFuture<String> profileImageUrlFuture = s3UploadUtil.uploadImageAsync(profileImage, pathPrefix, defaultImageUrl);
+
+        // 업로드 완료 후 Member 저장
+        return profileImageUrlFuture.thenAccept(profileImageUrl -> {
+            Member member = new Member(request.getEmail(), encodedPassword, request.getNickName(), profileImageUrl, request.getName());
+            memberRepository.save(member);
+        });
     }
 
     /**
@@ -69,7 +84,6 @@ public class MemberService {
             throw new BadCredentialsException("이메일 또는 비밀번호가 잘못되었습니다.");
         }
 
-        // JWT를 memberId 기반으로 생성
         return jwtUtil.generateIdToken(member.getId());
     }
 
@@ -84,33 +98,72 @@ public class MemberService {
     /**
      * 회원 정보 수정
      */
-    @Transactional
-    public UpdateMemberResponseDto updateMember(Long memberId, UpdateMemberRequestDto request) {
+    public CompletableFuture<UpdateMemberResponseDto> updateMember(Long memberId, UpdateMemberRequestDto request, MultipartFile newProfileImage) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new EntityNotFoundException("회원 정보를 찾을 수 없습니다."));
 
-        if (request.getNickName() != null && !request.getNickName().isBlank()) {
+        // 닉네임 변경
+        if (request.getNickName() != null && !request.getNickName().isBlank() &&
+                !request.getNickName().equals(member.getNickName())) {
             if (memberRepository.existsByNickName(request.getNickName())) {
                 throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
             }
             member.setNickName(request.getNickName());
         }
 
+        // 이름 변경
         if (request.getName() != null && !request.getName().isBlank()) {
             member.setName(request.getName());
         }
 
-        if (request.getProfileImageUrl() != null && !request.getProfileImageUrl().isBlank()) {
-            member.setProfileImageUrl(request.getProfileImageUrl());
+        String pathPrefix = "profile_images/" + member.getNickName();
+        String defaultImageUrl = "https://default-image-url.com/default-profile.png";
+        String oldProfileImageUrl = member.getProfileImageUrl();
+
+        // 새로운 프로필 이미지 업로드
+        CompletableFuture<String> profileImageUrlFuture = s3UploadUtil.uploadImageAsync(newProfileImage, pathPrefix, defaultImageUrl);
+
+        return profileImageUrlFuture.thenCompose(newProfileImageUrl -> {
+            member.setProfileImageUrl(newProfileImageUrl);
+            memberRepository.save(member);
+
+            // 기존 프로필 이미지 삭제
+            if (oldProfileImageUrl != null && !oldProfileImageUrl.equals(defaultImageUrl)) {
+                String oldFileName = extractFileName(oldProfileImageUrl);
+                return s3AsyncService.deleteFile("profile_images/" + oldFileName)
+                        .exceptionally(ex -> {
+                            System.err.println("S3 파일 삭제 실패: " + ex.getMessage());
+                            return null;
+                        })
+                        .thenApply(ignored -> new UpdateMemberResponseDto(
+                                member.getId(),
+                                member.getEmail(),
+                                member.getNickName(),
+                                member.getName(),
+                                member.getProfileImageUrl()
+                        ));
+            }
+
+            return CompletableFuture.completedFuture(new UpdateMemberResponseDto(
+                    member.getId(),
+                    member.getEmail(),
+                    member.getNickName(),
+                    member.getName(),
+                    member.getProfileImageUrl()
+            ));
+        });
+    }
+
+    public String extractFileName(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return null;
         }
 
-        return new UpdateMemberResponseDto(
-                member.getId(),
-                member.getEmail(),
-                member.getNickName(),
-                member.getName(),
-                member.getProfileImageUrl()
-        );
+        if (imageUrl.contains("/profile_images/")) {
+            return imageUrl.substring(imageUrl.lastIndexOf("/profile_images/") + "/profile_images/".length());
+        }
+
+        return imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
     }
 
     /**

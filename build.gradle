@@ -32,6 +32,11 @@ dependencies {
 	implementation 'io.github.cdimascio:java-dotenv:5.2.2'
 	implementation 'com.fasterxml.jackson.core:jackson-databind'
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+
+	implementation 'software.amazon.awssdk:s3:2.20.140'
+	implementation 'software.amazon.awssdk:netty-nio-client:2.20.140'
 
 	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
 	implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'

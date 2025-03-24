@@ -3,21 +3,19 @@ package pawparazzi.back;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 @SpringBootApplication
+@EnableAsync
 public class BackApplication {
     public static void main(String[] args) {
-        // .env 파일 로드
-        Dotenv dotenv = Dotenv.load();
-        System.setProperty("PAWPARAZZI_DB_URL", dotenv.get("PAWPARAZZI_DB_URL"));
-        System.setProperty("PAWPARAZZI_DB_USERNAME", dotenv.get("PAWPARAZZI_DB_USERNAME"));
-        System.setProperty("PAWPARAZZI_DB_PASSWORD", dotenv.get("PAWPARAZZI_DB_PASSWORD"));
-        System.setProperty("PAWPARAZZI_MONGO_URI", dotenv.get("PAWPARAZZI_MONGO_URI"));
-        System.setProperty("KAKAO_CLIENT_ID", dotenv.get("KAKAO_CLIENT_ID"));
-        System.setProperty("KAKAO_CLIENT_SECRET", dotenv.get("KAKAO_CLIENT_SECRET"));
-        System.setProperty("KAKAO_REDIRECT_URI", dotenv.get("KAKAO_REDIRECT_URI"));
-        System.setProperty("JWT_SECRET", dotenv.get("JWT_SECRET"));
-        System.setProperty("JWT_EXPIRATION", dotenv.get("JWT_EXPIRATION"));
+        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+
+        dotenv.entries().forEach(entry -> {
+            if (System.getProperty(entry.getKey()) == null) {
+                System.setProperty(entry.getKey(), entry.getValue());
+            }
+        });
 
         SpringApplication.run(BackApplication.class, args);
     }

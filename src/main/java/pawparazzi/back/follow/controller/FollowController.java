@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import pawparazzi.back.follow.dto.FollowResponseDto;
 import pawparazzi.back.follow.dto.FollowerResponseDto;
 import pawparazzi.back.follow.dto.FollowingResponseDto;
+import pawparazzi.back.follow.dto.UnfollowResponseDto;
 import pawparazzi.back.follow.service.FollowService;
 
 import java.util.List;
@@ -25,13 +26,12 @@ public class FollowController {
         return ResponseEntity.ok(response);
     }
 
-
     @DeleteMapping("/{targetId}")
-    public ResponseEntity<String> unfollow(
+    public ResponseEntity<UnfollowResponseDto> unfollow(
             @PathVariable Long targetId,
             @RequestHeader("Authorization") String token){
-        followService.unfollow(targetId, token);
-        return ResponseEntity.ok("팔로우 취소되었습니다.");
+        UnfollowResponseDto response = followService.unfollow(targetId, token);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/followers/{targetId}")

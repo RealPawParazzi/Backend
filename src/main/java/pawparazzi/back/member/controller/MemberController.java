@@ -1,9 +1,15 @@
 package pawparazzi.back.member.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import pawparazzi.back.S3.service.S3AsyncService;
 import pawparazzi.back.member.dto.request.LoginRequestDto;
 import pawparazzi.back.member.dto.request.SignUpRequestDto;
 import pawparazzi.back.member.dto.request.UpdateMemberRequestDto;
@@ -13,8 +19,10 @@ import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.service.MemberService;
 import pawparazzi.back.security.util.JwtUtil;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -23,14 +31,28 @@ public class MemberController {
 
     private final JwtUtil jwtUtil;
     private final MemberService memberService;
+    private final ObjectMapper objectMapper;
+
 
     /**
      * 회원 가입
      */
-    @PostMapping("/signup")
-    public ResponseEntity<String> registerUser(@Valid @RequestBody SignUpRequestDto request) {
-        memberService.registerUser(request);
-        return ResponseEntity.ok("회원가입 성공");
+    @PostMapping(value = "/signup", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public CompletableFuture<ResponseEntity<String>> registerUser(
+            @RequestPart(value = "profileImage", required = false) MultipartFile profileImage,
+            @RequestPart("userData") String userDataJson) {
+
+        // JSON 데이터를 DTO로 변환
+        SignUpRequestDto request;
+        try {
+            request = objectMapper.readValue(userDataJson, SignUpRequestDto.class);
+        } catch (JsonProcessingException e) {
+            return CompletableFuture.completedFuture(ResponseEntity.badRequest().body("Invalid JSON format"));
+        }
+
+        // 비동기 회원가입 처리 후 응답 반환
+        return memberService.registerUser(request, profileImage)
+                .thenApply(unused -> ResponseEntity.ok("회원가입 성공"));
     }
 
     /**
@@ -56,17 +78,27 @@ public class MemberController {
     /**
      * 사용자 정보 수정
      */
-    @PatchMapping("/me")
-    public ResponseEntity<UpdateMemberResponseDto> updateMember(
+    @PatchMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public CompletableFuture<ResponseEntity<UpdateMemberResponseDto>> updateMember(
             @RequestHeader("Authorization") String token,
-            @Valid @RequestBody UpdateMemberRequestDto request) {
+            @RequestPart(value = "profileImage", required = false) MultipartFile profileImage,
+            @RequestPart(value = "userData", required = false) String userDataJson) {
 
         token = token.replace("Bearer ", "");
         Long memberId = jwtUtil.extractMemberId(token);
 
-        UpdateMemberResponseDto updatedMember = memberService.updateMember(memberId, request);
-        return ResponseEntity.ok(updatedMember);
+        try {
+            UpdateMemberRequestDto request = (userDataJson == null || userDataJson.isBlank())
+                    ? new UpdateMemberRequestDto()
+                    : objectMapper.readValue(userDataJson, UpdateMemberRequestDto.class);
+
+            return memberService.updateMember(memberId, request, profileImage)
+                    .thenApply(ResponseEntity::ok);
+        } catch (JsonProcessingException e) {
+            return CompletableFuture.completedFuture(ResponseEntity.badRequest().body(null));
+        }
     }
+
     /**
      * 회원 탙퇴
      */
