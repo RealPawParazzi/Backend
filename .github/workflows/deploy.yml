@@ -2,7 +2,7 @@ name: Deploy to EC2
 
 on:
   push:
-    branches: [ dev ]
+    branches: [ dev ] # dev에 변경사항이 있을 때 자동 배포
 
 jobs:
   deploy:
