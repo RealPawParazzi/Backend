@@ -152,6 +152,17 @@ public class MemberService {
 
         String pathPrefix = "profile_images/" + member.getNickName();
         String defaultImageUrl = "https://default-image-url.com/default-profile.png";
+
+        if (newProfileImage == null || newProfileImage.isEmpty()) {
+            return CompletableFuture.completedFuture(new UpdateMemberResponseDto(
+                    member.getId(),
+                    member.getEmail(),
+                    member.getNickName(),
+                    member.getName(),
+                    member.getProfileImageUrl()
+            ));
+        }
+
         String oldProfileImageUrl = member.getProfileImageUrl();
 
         // 새로운 프로필 이미지 업로드
