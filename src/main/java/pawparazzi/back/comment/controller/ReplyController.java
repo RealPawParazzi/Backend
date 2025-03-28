@@ -2,6 +2,7 @@ package pawparazzi.back.comment.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pawparazzi.back.comment.dto.request.ReplyRequestDto;
@@ -13,6 +14,7 @@ import pawparazzi.back.comment.service.ReplyLikeService;
 import pawparazzi.back.comment.service.ReplyService;
 import pawparazzi.back.security.util.JwtUtil;
 
+import io.jsonwebtoken.JwtException;
 
 import java.util.Map;
 
@@ -33,10 +35,13 @@ public class ReplyController {
             @PathVariable Long commentId,
             @RequestHeader("Authorization") String token,
             @RequestBody @Valid ReplyRequestDto requestDto) {
-
-        Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        ReplyResponseDto response = replyService.createReply(commentId, memberId, requestDto);
-        return ResponseEntity.ok(response);
+        try {
+            Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+            ReplyResponseDto response = replyService.createReply(commentId, memberId, requestDto);
+            return ResponseEntity.ok(response);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
     /**
@@ -47,11 +52,14 @@ public class ReplyController {
             @PathVariable Long replyId,
             @RequestHeader("Authorization") String token,
             @RequestBody Map<String, String> request) {
-
-        Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        String content = request.get("content");
-        ReplyResponseDto response = replyService.updateReply(replyId, memberId, content);
-        return ResponseEntity.ok(response);
+        try {
+            Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+            String content = request.get("content");
+            ReplyResponseDto response = replyService.updateReply(replyId, memberId, content);
+            return ResponseEntity.ok(response);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
     /**
@@ -61,11 +69,13 @@ public class ReplyController {
     public ResponseEntity<Map<String, String>> deleteReply(
             @PathVariable Long replyId,
             @RequestHeader("Authorization") String token) {
-
-        Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        replyService.deleteReply(replyId, memberId);
-
-        return ResponseEntity.ok(Map.of("message", "대댓글이 삭제되었습니다."));
+        try {
+            Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+            replyService.deleteReply(replyId, memberId);
+            return ResponseEntity.ok(Map.of("message", "대댓글이 삭제되었습니다."));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
     /**
@@ -76,7 +86,6 @@ public class ReplyController {
         return ResponseEntity.ok(replyService.getRepliesByComment(commentId));
     }
 
-
     /**
      * 대댓글 좋아요 등록/삭제 (토글)
      */
@@ -84,11 +93,13 @@ public class ReplyController {
     public ResponseEntity<ReplyLikeResponseDto> toggleReplyLike(
             @PathVariable Long replyId,
             @RequestHeader("Authorization") String token) {
-
-        Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        ReplyLikeResponseDto response = replyLikeService.toggleReplyLike(replyId, memberId);
-
-        return ResponseEntity.ok(response);
+        try {
+            Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+            ReplyLikeResponseDto response = replyLikeService.toggleReplyLike(replyId, memberId);
+            return ResponseEntity.ok(response);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
     /**
