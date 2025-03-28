@@ -1,5 +1,7 @@
 package pawparazzi.back.security.filter;
 
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,16 +30,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
+            try {
+                if (jwtUtil.validateToken(token)) {
+                    Long memberId = jwtUtil.extractMemberId(token);
+                    UserDetails userDetails = userDetailsService.loadUserById(memberId);
 
-            if (jwtUtil.validateToken(token)) {
-                Long memberId = jwtUtil.extractMemberId(token);
-                UserDetails userDetails = userDetailsService.loadUserById(memberId);
-
-                JwtAuthenticationToken authentication =
-                        new JwtAuthenticationToken(userDetails, token, userDetails.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                    JwtAuthenticationToken authentication =
+                            new JwtAuthenticationToken(userDetails, token, userDetails.getAuthorities());
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+            } catch (ExpiredJwtException e) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401로 응답
+                response.getWriter().write("Access Token Expired");
+                return;
+            } catch (JwtException e) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("Invalid JWT");
+                return;
             }
         }
+
         chain.doFilter(request, response);
     }
 }

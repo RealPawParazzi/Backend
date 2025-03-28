@@ -2,14 +2,12 @@ package pawparazzi.back.member.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import pawparazzi.back.S3.service.S3AsyncService;
 import pawparazzi.back.member.dto.request.LoginRequestDto;
 import pawparazzi.back.member.dto.request.SignUpRequestDto;
 import pawparazzi.back.member.dto.request.UpdateMemberRequestDto;
@@ -19,7 +17,6 @@ import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.service.MemberService;
 import pawparazzi.back.security.util.JwtUtil;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -32,7 +29,6 @@ public class MemberController {
     private final JwtUtil jwtUtil;
     private final MemberService memberService;
     private final ObjectMapper objectMapper;
-
 
     /**
      * 회원 가입
@@ -60,8 +56,8 @@ public class MemberController {
      */
     @PostMapping("/login")
     public ResponseEntity<Map<String, String>> login(@Valid @RequestBody LoginRequestDto request) {
-        String token = memberService.login(request);
-        return ResponseEntity.ok(Map.of("token", token));
+        Map<String, String> tokenMap = memberService.login(request);
+        return ResponseEntity.ok(tokenMap);
     }
 
     /**
@@ -100,7 +96,7 @@ public class MemberController {
     }
 
     /**
-     * 회원 탙퇴
+     * 회원 탈퇴
      */
     @DeleteMapping("/delete")
     public ResponseEntity<String> deleteMember(@RequestHeader("Authorization") String token) {
@@ -110,7 +106,6 @@ public class MemberController {
         return ResponseEntity.ok("회원 탈퇴 완료");
     }
 
-
     /**
      * 전체 회원 목록 조회 API
      */
@@ -118,5 +113,25 @@ public class MemberController {
     public ResponseEntity<List<MemberResponseDto>> getAllMembers() {
         List<MemberResponseDto> members = memberService.getAllMembers();
         return ResponseEntity.ok(members);
+    }
+
+    /**
+     * 로그아웃
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(@RequestHeader("Authorization") String accessToken,
+                                         @RequestBody Map<String, String> body) {
+        String refreshToken = body.get("refreshToken");
+        accessToken = accessToken.replace("Bearer ", "");
+        Long memberId = jwtUtil.extractMemberId(accessToken);
+        memberService.logout(memberId, refreshToken);
+        return ResponseEntity.ok("로그아웃 완료");
+    }
+
+    @PostMapping("/reissue")
+    public ResponseEntity<Map<String, String>> reissue(@RequestBody Map<String, String> request) {
+        String refreshToken = request.get("refreshToken");
+        Map<String, String> tokenMap = memberService.reissueAccessToken(refreshToken);
+        return ResponseEntity.ok(tokenMap);
     }
 }

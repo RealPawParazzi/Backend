@@ -6,7 +6,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
+import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtUtil {
@@ -29,6 +31,15 @@ public class JwtUtil {
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
+
+    public String generateRefreshToken() {
+        return UUID.randomUUID().toString();
+    }
+
+    public LocalDateTime getRefreshTokenExpiryDate() {
+        return LocalDateTime.now().plusDays(7); // 7일
+    }
+
 
     // 토큰에서 사용자 ID 추출
     public Long extractMemberId(String token) {
