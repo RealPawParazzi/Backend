@@ -32,9 +32,13 @@ public class WalkController {
             @RequestBody WalkRequestDto requestDto,
             @RequestHeader("Authorization") String token
     ) {
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        WalkResponseDto responseDto = walkService.createWalk(requestDto, userId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
+        try {
+            Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+            WalkResponseDto responseDto = walkService.createWalk(requestDto, userId);
+            return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
     //산책 기록 조회 (산책 기록 아이디로)

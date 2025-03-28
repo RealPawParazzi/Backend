@@ -2,7 +2,9 @@ package pawparazzi.back.pet.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -35,7 +37,12 @@ public class PetController {
             @RequestPart("petData") String petDataJson,
             @RequestPart(value = "petImage", required = false) MultipartFile petImage) {
 
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        Long userId;
+        try {
+            userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        }
 
         PetRegisterRequestDto registerDto;
         try {
@@ -53,7 +60,12 @@ public class PetController {
      */
     @GetMapping("/all")
     public ResponseEntity<List<PetResponseDto>> getAllPets(@RequestHeader("Authorization") String token) {
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        Long userId;
+        try {
+            userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         List<PetResponseDto> pets = petService.getPetsByMember(userId);
         return ResponseEntity.ok(pets);
     }
@@ -63,7 +75,12 @@ public class PetController {
      */
     @GetMapping("/{petId}")
     public ResponseEntity<PetResponseDto> getPet(@PathVariable Long petId, @RequestHeader("Authorization") String token) {
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        Long userId;
+        try {
+            userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         return ResponseEntity.ok(petService.getPetById(petId, userId));
     }
 
@@ -77,7 +94,12 @@ public class PetController {
             @RequestPart(value = "petData", required = false) String petDataJson,
             @RequestPart(value = "petImage", required = false) MultipartFile petImage) {
 
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        Long userId;
+        try {
+            userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        }
 
         PetUpdateDto updateDto;
         try {
@@ -100,7 +122,12 @@ public class PetController {
             @PathVariable Long petId,
             @RequestHeader("Authorization") String token) {
 
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        Long userId;
+        try {
+            userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        }
 
         return petService.deletePet(petId, userId)
                 .thenApply(ignored -> ResponseEntity.ok(Map.of("message", "반려동물이 삭제되었습니다.")));
