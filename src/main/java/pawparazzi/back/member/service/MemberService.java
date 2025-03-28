@@ -19,16 +19,20 @@ import pawparazzi.back.member.dto.request.UpdateMemberRequestDto;
 import pawparazzi.back.member.dto.response.MemberResponseDto;
 import pawparazzi.back.member.dto.response.UpdateMemberResponseDto;
 import pawparazzi.back.member.entity.Member;
+import pawparazzi.back.member.entity.RefreshToken;
 import pawparazzi.back.member.repository.MemberRepository;
+import pawparazzi.back.member.repository.RefreshTokenRepository;
 import pawparazzi.back.security.util.JwtUtil;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-
+import java.time.temporal.ChronoUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +45,7 @@ public class MemberService {
     private final BoardMongoRepository boardMongoRepository;
     private final S3AsyncService s3AsyncService;
     private final S3UploadUtil s3UploadUtil;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     /**
      * 회원가입
@@ -72,19 +77,48 @@ public class MemberService {
     /**
      * 로그인
      */
-    public String login(LoginRequestDto request) {
-        Optional<Member> memberOptional = memberRepository.findByEmail(request.getEmail());
-        if (memberOptional.isEmpty()) {
-            throw new BadCredentialsException("이메일 또는 비밀번호가 잘못되었습니다.");
-        }
-
-        Member member = memberOptional.get();
+    public Map<String, String> login(LoginRequestDto request) {
+        Member member = memberRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadCredentialsException("이메일 또는 비밀번호가 잘못되었습니다."));
 
         if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
             throw new BadCredentialsException("이메일 또는 비밀번호가 잘못되었습니다.");
         }
 
-        return jwtUtil.generateIdToken(member.getId());
+        String accessToken = jwtUtil.generateIdToken(member.getId());
+
+        Optional<RefreshToken> existingTokenOpt = refreshTokenRepository.findByMember(member);
+        String refreshToken;
+
+        if (existingTokenOpt.isPresent()) {
+            RefreshToken existingToken = existingTokenOpt.get();
+            long remainingDays = ChronoUnit.DAYS.between(LocalDateTime.now(), existingToken.getExpiryDate());
+
+            if (remainingDays <= 1) {
+                // 만료 임박 → 새로 발급
+                refreshToken = jwtUtil.generateRefreshToken();
+                existingToken.setToken(refreshToken);
+                existingToken.setExpiryDate(jwtUtil.getRefreshTokenExpiryDate());
+                refreshTokenRepository.save(existingToken);
+            } else {
+                // 기존 토큰 사용
+                refreshToken = existingToken.getToken();
+            }
+        } else {
+            // 존재하지 않으면 새로 발급
+            refreshToken = jwtUtil.generateRefreshToken();
+            RefreshToken newToken = RefreshToken.builder()
+                    .member(member)
+                    .token(refreshToken)
+                    .expiryDate(jwtUtil.getRefreshTokenExpiryDate())
+                    .build();
+            refreshTokenRepository.save(newToken);
+        }
+
+        return Map.of(
+                "accessToken", accessToken,
+                "refreshToken", refreshToken
+        );
     }
 
     /**
@@ -220,6 +254,55 @@ public class MemberService {
             );
             memberRepository.save(newMember);
             return newMember.getId();
+        }
+    }
+
+    /**
+     * 로그아웃
+     */
+    @Transactional
+    public void logout(Long memberId, String refreshToken) {
+        RefreshToken savedToken = refreshTokenRepository.findByToken(refreshToken)
+                .orElseThrow(() -> new IllegalArgumentException("이미 만료되었거나 존재하지 않는 토큰입니다."));
+
+        if (!savedToken.getMember().getId().equals(memberId)) {
+            throw new SecurityException("토큰의 사용자 정보가 일치하지 않습니다.");
+        }
+
+        refreshTokenRepository.delete(savedToken);
+    }
+
+
+    @Transactional
+    public Map<String, String> reissueAccessToken(String refreshToken) {
+        RefreshToken savedToken = refreshTokenRepository.findByToken(refreshToken)
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 리프레시 토큰입니다."));
+
+        if (savedToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            refreshTokenRepository.delete(savedToken);
+            throw new IllegalArgumentException("리프레시 토큰이 만료되었습니다. 다시 로그인 해주세요.");
+        }
+
+        Member member = savedToken.getMember();
+        String newAccessToken = jwtUtil.generateIdToken(member.getId());
+
+        long remainingDays = ChronoUnit.DAYS.between(LocalDateTime.now(), savedToken.getExpiryDate());
+
+        if (remainingDays <= 1) {
+            // RefreshToken 재발급
+            String newRefreshToken = jwtUtil.generateRefreshToken();
+            savedToken.setToken(newRefreshToken);
+            savedToken.setExpiryDate(jwtUtil.getRefreshTokenExpiryDate());
+            refreshTokenRepository.save(savedToken);
+
+            return Map.of(
+                    "accessToken", newAccessToken,
+                    "refreshToken", newRefreshToken
+            );
+        } else {
+            return Map.of(
+                    "accessToken", newAccessToken
+            );
         }
     }
 }
