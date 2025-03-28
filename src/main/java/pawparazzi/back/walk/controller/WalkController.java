@@ -1,5 +1,6 @@
 package pawparazzi.back.walk.controller;
 
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -41,10 +42,12 @@ public class WalkController {
     public ResponseEntity<WalkResponseDto> getWalk(
             @PathVariable Long walkId,
             @RequestHeader("Authorization") String token) {
-        try{
+        try {
             Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
             WalkResponseDto responseDto = walkService.getWalkById(walkId, userId);
             return ResponseEntity.ok(responseDto);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         }
@@ -55,10 +58,12 @@ public class WalkController {
     public ResponseEntity<Void> deleteWalk(
             @PathVariable Long walkId,
             @RequestHeader("Authorization") String token) {
-        try{
+        try {
             Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
             walkService.deleteWalk(walkId, userId);
             return ResponseEntity.noContent().build();
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         }
@@ -73,6 +78,8 @@ public class WalkController {
             Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
             List<WalkResponseDto> walks = walkService.getWalksByPetId(petId, userId);
             return ResponseEntity.ok(walks);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         }
@@ -83,10 +90,12 @@ public class WalkController {
     public ResponseEntity<List<WalkResponseDto>> getWalkByPetDate(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date,
             @RequestHeader("Authorization") String token){
-        try{
+        try {
             Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
             List<WalkResponseDto> walks = walkService.getWalksByDate(date, userId);
             return ResponseEntity.ok(walks);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         }
@@ -102,6 +111,8 @@ public class WalkController {
             Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
             List<WalkResponseDto> walks = walkService.getWalksByPetIdAndDate(petId, date, userId);
             return ResponseEntity.ok(walks);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         }

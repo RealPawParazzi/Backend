@@ -1,5 +1,6 @@
 package pawparazzi.back.security.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -15,12 +16,14 @@ import pawparazzi.back.security.util.JwtUtil;
 import pawparazzi.back.security.token.JwtAuthenticationToken;
 
 import java.io.IOException;
+import java.util.Map;
 
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final CustomUserDetailsService userDetailsService;
+    private final ObjectMapper objectMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -40,12 +43,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             } catch (ExpiredJwtException e) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401로 응답
-                response.getWriter().write("Access Token Expired");
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                objectMapper.writeValue(response.getWriter(),
+                    Map.of("status", 401, "message", "Access Token Expired"));
                 return;
             } catch (JwtException e) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("Invalid JWT");
+                response.setContentType("application/json");
+                objectMapper.writeValue(response.getWriter(),
+                    Map.of("status", 401, "message", "Invalid JWT"));
                 return;
             }
         }

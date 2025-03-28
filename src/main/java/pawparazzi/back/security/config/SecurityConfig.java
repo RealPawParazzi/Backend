@@ -1,5 +1,7 @@
 package pawparazzi.back.security.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +29,7 @@ public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
     private final CustomUserDetailsService userDetailsService;
+    private final ObjectMapper objectMapper;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -55,7 +58,19 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/replies/**").authenticated()
 
                         .anyRequest().authenticated())  // 나머지는 인증 필요
-                .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userDetailsService),
+                .exceptionHandling(exception -> exception
+                    .authenticationEntryPoint((request, response, authException) -> {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.setContentType("application/json");
+                        response.getWriter().write("{\"status\":401, \"message\":\"Unauthorized - 인증 실패 또는 토큰 만료\"}");
+                    })
+                    .accessDeniedHandler((request, response, accessDeniedException) -> {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        response.setContentType("application/json");
+                        response.getWriter().write("{\"status\":403, \"message\":\"Forbidden - 접근 권한이 없습니다.\"}");
+                    })
+                )
+                .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userDetailsService, objectMapper),
                         UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

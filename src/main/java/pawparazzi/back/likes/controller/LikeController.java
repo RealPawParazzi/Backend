@@ -1,6 +1,8 @@
 package pawparazzi.back.likes.controller;
 
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +30,12 @@ public class LikeController {
             @PathVariable Long boardId,
             @RequestHeader("Authorization") String token) {
 
-        Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        Long memberId;
+        try {
+            memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         LikeToggleResponseDto response = likeService.toggleLike(boardId, memberId);
 
         return ResponseEntity.ok(response);
