@@ -40,15 +40,20 @@ public class JwtUtil {
         return LocalDateTime.now().plusDays(7); // 7일
     }
 
-
     // 토큰에서 사용자 ID 추출
     public Long extractMemberId(String token) {
-        return Long.parseLong(Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject());
+        try {
+            return Long.parseLong(Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody()
+                    .getSubject());
+        } catch (ExpiredJwtException e) {
+            throw new JwtException("Access Token Expired", e);
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new JwtException("Invalid JWT", e);
+        }
     }
 
     // 토큰 유효성 검증

@@ -1,6 +1,8 @@
 package pawparazzi.back.follow.controller;
 
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pawparazzi.back.follow.dto.FollowResponseDto;
@@ -22,16 +24,24 @@ public class FollowController {
     public ResponseEntity<FollowResponseDto> follow(
             @PathVariable Long targetId,
             @RequestHeader("Authorization") String token){
-        FollowResponseDto response = followService.follow(targetId, token);
-        return ResponseEntity.ok(response);
+        try {
+            FollowResponseDto response = followService.follow(targetId, token);
+            return ResponseEntity.ok(response);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
     @DeleteMapping("/{targetId}")
     public ResponseEntity<UnfollowResponseDto> unfollow(
             @PathVariable Long targetId,
             @RequestHeader("Authorization") String token){
-        UnfollowResponseDto response = followService.unfollow(targetId, token);
-        return ResponseEntity.ok(response);
+        try {
+            UnfollowResponseDto response = followService.unfollow(targetId, token);
+            return ResponseEntity.ok(response);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
     @GetMapping("/followers/{targetId}")

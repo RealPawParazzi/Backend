@@ -2,7 +2,9 @@ package pawparazzi.back.board.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -36,7 +38,12 @@ public class BoardController {
             @RequestPart(value = "titleImage", required = false) MultipartFile titleImageFile,
             @RequestPart(value = "titleContent", required = false) String titleContent) {
 
-        Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        Long memberId;
+        try {
+            memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
         BoardCreateRequestDto requestDto;
         try {
@@ -81,9 +88,14 @@ public class BoardController {
             @RequestPart(value = "titleImage", required = false) MultipartFile titleImageFile,
             @RequestPart(value = "titleContent", required = false) String titleContent) {
 
+        Long memberId;
         try {
-            Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+            memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
+        try {
             BoardUpdateRequestDto requestDto = objectMapper.readValue(userDataJson, BoardUpdateRequestDto.class);
 
             requestDto.setTitleContent(titleContent);
@@ -110,7 +122,12 @@ public class BoardController {
      */
     @DeleteMapping("/{boardId}")
     public ResponseEntity<Void> deleteBoard(@PathVariable Long boardId, @RequestHeader("Authorization") String token) {
-        Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        Long userId;
+        try {
+            userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
         boardService.deleteBoard(boardId, userId).join();
 

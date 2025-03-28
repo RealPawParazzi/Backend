@@ -24,7 +24,6 @@ import pawparazzi.back.member.repository.MemberRepository;
 import pawparazzi.back.member.repository.RefreshTokenRepository;
 import pawparazzi.back.security.util.JwtUtil;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;

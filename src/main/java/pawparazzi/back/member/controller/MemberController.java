@@ -2,8 +2,11 @@ package pawparazzi.back.member.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.JwtException;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -66,7 +69,12 @@ public class MemberController {
     @GetMapping("/me")
     public ResponseEntity<Member> getCurrentUser(@RequestHeader("Authorization") String token) {
         token = token.replace("Bearer ", "");
-        Long memberId = jwtUtil.extractMemberId(token);
+        Long memberId;
+        try {
+            memberId = jwtUtil.extractMemberId(token);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         Member member = memberService.findById(memberId);
         return ResponseEntity.ok(member);
     }
@@ -81,7 +89,12 @@ public class MemberController {
             @RequestPart(value = "userData", required = false) String userDataJson) {
 
         token = token.replace("Bearer ", "");
-        Long memberId = jwtUtil.extractMemberId(token);
+        Long memberId;
+        try {
+            memberId = jwtUtil.extractMemberId(token);
+        } catch (JwtException e) {
+            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        }
 
         try {
             UpdateMemberRequestDto request = (userDataJson == null || userDataJson.isBlank())
@@ -101,7 +114,12 @@ public class MemberController {
     @DeleteMapping("/delete")
     public ResponseEntity<String> deleteMember(@RequestHeader("Authorization") String token) {
         token = token.replace("Bearer ", "");
-        Long memberId = jwtUtil.extractMemberId(token);
+        Long memberId;
+        try {
+            memberId = jwtUtil.extractMemberId(token);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         memberService.deleteMember(memberId);
         return ResponseEntity.ok("회원 탈퇴 완료");
     }
@@ -123,7 +141,12 @@ public class MemberController {
                                          @RequestBody Map<String, String> body) {
         String refreshToken = body.get("refreshToken");
         accessToken = accessToken.replace("Bearer ", "");
-        Long memberId = jwtUtil.extractMemberId(accessToken);
+        Long memberId;
+        try {
+            memberId = jwtUtil.extractMemberId(accessToken);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         memberService.logout(memberId, refreshToken);
         return ResponseEntity.ok("로그아웃 완료");
     }
