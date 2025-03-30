@@ -85,7 +85,15 @@ public class MemberService {
         }
 
         String accessToken = jwtUtil.generateIdToken(member.getId());
+        String refreshToken = generateOrUpdateRefreshToken(member);
 
+        return Map.of(
+                "accessToken", accessToken,
+                "refreshToken", refreshToken
+        );
+    }
+
+    public String generateOrUpdateRefreshToken(Member member) {
         Optional<RefreshToken> existingTokenOpt = refreshTokenRepository.findByMember(member);
         String refreshToken;
 
@@ -94,17 +102,14 @@ public class MemberService {
             long remainingDays = ChronoUnit.DAYS.between(LocalDateTime.now(), existingToken.getExpiryDate());
 
             if (remainingDays <= 1) {
-                // 만료 임박 → 새로 발급
                 refreshToken = jwtUtil.generateRefreshToken();
                 existingToken.setToken(refreshToken);
                 existingToken.setExpiryDate(jwtUtil.getRefreshTokenExpiryDate());
                 refreshTokenRepository.save(existingToken);
             } else {
-                // 기존 토큰 사용
                 refreshToken = existingToken.getToken();
             }
         } else {
-            // 존재하지 않으면 새로 발급
             refreshToken = jwtUtil.generateRefreshToken();
             RefreshToken newToken = RefreshToken.builder()
                     .member(member)
@@ -114,10 +119,7 @@ public class MemberService {
             refreshTokenRepository.save(newToken);
         }
 
-        return Map.of(
-                "accessToken", accessToken,
-                "refreshToken", refreshToken
-        );
+        return refreshToken;
     }
 
     /**
@@ -247,11 +249,11 @@ public class MemberService {
      * 카카오 로그인 회원 처리
      */
     @Transactional
-    public Long handleKakaoLogin(KakaoUserDto kakaoUser) {
+    public Member handleKakaoLogin(KakaoUserDto kakaoUser) {
         Optional<Member> existingMember = memberRepository.findByEmail(kakaoUser.getEmail());
 
         if (existingMember.isPresent()) {
-            return existingMember.get().getId();
+            return existingMember.get();
         } else {
             String randomPassword = passwordEncoder.encode(UUID.randomUUID().toString());
 
@@ -263,7 +265,7 @@ public class MemberService {
                     kakaoUser.getNickname()
             );
             memberRepository.save(newMember);
-            return newMember.getId();
+            return newMember;
         }
     }
 

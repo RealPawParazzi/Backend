@@ -4,15 +4,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import pawparazzi.back.member.dto.JwtResponseDto;
 import pawparazzi.back.member.dto.KakaoUserDto;
 import pawparazzi.back.member.service.KakaoAuthService;
 import pawparazzi.back.member.service.MemberService;
+import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.security.util.JwtUtil;
 
 import java.net.URI;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -50,19 +52,25 @@ public class AuthController {
      * 카카오 로그인 콜백 (인가 코드 → JWT 발급)
      */
     @GetMapping("/kakao/callback")
-    public ResponseEntity<JwtResponseDto> kakaoLogin(@RequestParam String code) {
+    public ResponseEntity<Map<String, String>> kakaoLogin(@RequestParam String code) {
         try {
             String accessToken = kakaoAuthService.getAccessToken(code);
             KakaoUserDto kakaoUser = kakaoAuthService.getUserInfo(accessToken);
-            Long memberId = memberService.handleKakaoLogin(kakaoUser);
-            String jwtToken = jwtUtil.generateIdToken(memberId);
+            Member member = memberService.handleKakaoLogin(kakaoUser);
 
-            String frontendRedirectUrl = "http://localhost:8082/auth/success?token=" + jwtToken;
+            String jwtToken = jwtUtil.generateIdToken(member.getId());
+            String refreshToken = memberService.generateOrUpdateRefreshToken(member);
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setLocation(URI.create(frontendRedirectUrl));
-            return ResponseEntity.status(302).headers(headers).build();
+            Map<String, String> tokenMap = Map.of(
+                    "accessToken", jwtToken,
+                    "refreshToken", refreshToken
+            );
 
+            return ResponseEntity.ok(tokenMap);
+
+        } catch (IllegalStateException e) {
+            log.error("카카오 인증 처리 중 오류 발생: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (Exception e) {
             log.error("카카오 로그인 처리 중 오류 발생: {}", e.getMessage());
             return ResponseEntity.internalServerError().build();
