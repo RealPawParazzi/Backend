@@ -2,9 +2,9 @@ package pawparazzi.back.comment.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import pawparazzi.back.comment.dto.request.ReplyRequestDto;
 import pawparazzi.back.comment.dto.response.ReplyLikeResponseDto;
 import pawparazzi.back.comment.dto.response.ReplyLikesResponseDto;
@@ -12,9 +12,7 @@ import pawparazzi.back.comment.dto.response.ReplyResponseDto;
 import pawparazzi.back.comment.dto.response.ReplyListResponseDto;
 import pawparazzi.back.comment.service.ReplyLikeService;
 import pawparazzi.back.comment.service.ReplyService;
-import pawparazzi.back.security.util.JwtUtil;
-
-import io.jsonwebtoken.JwtException;
+import pawparazzi.back.security.user.CustomUserDetails;
 
 import java.util.Map;
 
@@ -25,7 +23,6 @@ public class ReplyController {
 
     private final ReplyService replyService;
     private final ReplyLikeService replyLikeService;
-    private final JwtUtil jwtUtil;
 
     /**
      * 대댓글 작성
@@ -33,15 +30,11 @@ public class ReplyController {
     @PostMapping("/{commentId}")
     public ResponseEntity<ReplyResponseDto> createReply(
             @PathVariable Long commentId,
-            @RequestHeader("Authorization") String token,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody @Valid ReplyRequestDto requestDto) {
-        try {
-            Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-            ReplyResponseDto response = replyService.createReply(commentId, memberId, requestDto);
-            return ResponseEntity.ok(response);
-        } catch (JwtException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+        Long memberId = userDetails.getId();
+        ReplyResponseDto response = replyService.createReply(commentId, memberId, requestDto);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -50,16 +43,12 @@ public class ReplyController {
     @PutMapping("/{replyId}")
     public ResponseEntity<ReplyResponseDto> updateReply(
             @PathVariable Long replyId,
-            @RequestHeader("Authorization") String token,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody Map<String, String> request) {
-        try {
-            Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-            String content = request.get("content");
-            ReplyResponseDto response = replyService.updateReply(replyId, memberId, content);
-            return ResponseEntity.ok(response);
-        } catch (JwtException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+        Long memberId = userDetails.getId();
+        String content = request.get("content");
+        ReplyResponseDto response = replyService.updateReply(replyId, memberId, content);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -68,14 +57,10 @@ public class ReplyController {
     @DeleteMapping("/{replyId}")
     public ResponseEntity<Map<String, String>> deleteReply(
             @PathVariable Long replyId,
-            @RequestHeader("Authorization") String token) {
-        try {
-            Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-            replyService.deleteReply(replyId, memberId);
-            return ResponseEntity.ok(Map.of("message", "대댓글이 삭제되었습니다."));
-        } catch (JwtException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long memberId = userDetails.getId();
+        replyService.deleteReply(replyId, memberId);
+        return ResponseEntity.ok(Map.of("message", "대댓글이 삭제되었습니다."));
     }
 
     /**
@@ -92,14 +77,11 @@ public class ReplyController {
     @PostMapping("/{replyId}/like")
     public ResponseEntity<ReplyLikeResponseDto> toggleReplyLike(
             @PathVariable Long replyId,
-            @RequestHeader("Authorization") String token) {
-        try {
-            Long memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-            ReplyLikeResponseDto response = replyLikeService.toggleReplyLike(replyId, memberId);
-            return ResponseEntity.ok(response);
-        } catch (JwtException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Long memberId = userDetails.getId();
+        ReplyLikeResponseDto response = replyLikeService.toggleReplyLike(replyId, memberId);
+        return ResponseEntity.ok(response);
     }
 
     /**
