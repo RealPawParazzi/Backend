@@ -1,20 +1,15 @@
 package pawparazzi.back.board.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import pawparazzi.back.board.dto.BoardCreateRequestDto;
 import pawparazzi.back.board.dto.BoardListResponseDto;
 import pawparazzi.back.board.dto.BoardDetailDto;
-import pawparazzi.back.board.dto.BoardUpdateRequestDto;
 import pawparazzi.back.board.service.BoardService;
-import pawparazzi.back.security.util.JwtUtil;
+import pawparazzi.back.security.user.CustomUserDetails;
 
 import java.util.List;
 
@@ -24,37 +19,21 @@ import java.util.List;
 public class BoardController {
 
     private final BoardService boardService;
-    private final JwtUtil jwtUtil;
-    private final ObjectMapper objectMapper;
 
     /**
      * 게시물 등록
      */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<BoardDetailDto> createBoard(
-            @RequestHeader("Authorization") String token,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestPart("userData") String userDataJson,
             @RequestPart(value = "mediaFiles", required = false) List<MultipartFile> mediaFiles,
             @RequestPart(value = "titleImage", required = false) MultipartFile titleImageFile,
             @RequestPart(value = "titleContent", required = false) String titleContent) {
 
-        Long memberId;
-        try {
-            memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        } catch (JwtException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+        Long memberId = userDetails.getId();
 
-        BoardCreateRequestDto requestDto;
-        try {
-            requestDto = objectMapper.readValue(userDataJson, BoardCreateRequestDto.class);
-            requestDto.setMediaFiles(mediaFiles);
-            requestDto.setTitleContent(titleContent);
-        } catch (JsonProcessingException e) {
-            return ResponseEntity.badRequest().body(null);
-        }
-
-        BoardDetailDto response = boardService.createBoard(requestDto, memberId, titleImageFile);
+        BoardDetailDto response = boardService.createBoard(userDataJson, memberId, titleImageFile, mediaFiles, titleContent);
         return ResponseEntity.ok(response);
     }
 
@@ -82,30 +61,16 @@ public class BoardController {
     @PutMapping(value = "/{boardId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<BoardDetailDto> updateBoard(
             @PathVariable Long boardId,
-            @RequestHeader("Authorization") String token,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestPart("userData") String userDataJson,
             @RequestPart(value = "mediaFiles", required = false) List<MultipartFile> mediaFiles,
             @RequestPart(value = "titleImage", required = false) MultipartFile titleImageFile,
             @RequestPart(value = "titleContent", required = false) String titleContent) {
 
-        Long memberId;
-        try {
-            memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        } catch (JwtException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+        Long memberId = userDetails.getId();
 
-        try {
-            BoardUpdateRequestDto requestDto = objectMapper.readValue(userDataJson, BoardUpdateRequestDto.class);
-
-            requestDto.setTitleContent(titleContent);
-
-            BoardDetailDto updatedBoard = boardService.updateBoard(boardId, memberId, requestDto, mediaFiles, titleImageFile).join();
-
-            return ResponseEntity.ok(updatedBoard);
-        } catch (JsonProcessingException e) {
-            return ResponseEntity.badRequest().body(null);
-        }
+        BoardDetailDto updatedBoard = boardService.updateBoard(boardId, memberId, userDataJson, mediaFiles, titleImageFile, titleContent).join();
+        return ResponseEntity.ok(updatedBoard);
     }
 
     /**
@@ -121,16 +86,10 @@ public class BoardController {
      * 게시물 삭제
      */
     @DeleteMapping("/{boardId}")
-    public ResponseEntity<Void> deleteBoard(@PathVariable Long boardId, @RequestHeader("Authorization") String token) {
-        Long userId;
-        try {
-            userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        } catch (JwtException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+    public ResponseEntity<Void> deleteBoard(@PathVariable Long boardId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long userId = userDetails.getId();
 
         boardService.deleteBoard(boardId, userId).join();
-
         return ResponseEntity.noContent().build();
     }
 }

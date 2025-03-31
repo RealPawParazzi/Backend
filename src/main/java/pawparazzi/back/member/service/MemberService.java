@@ -1,5 +1,7 @@
 package pawparazzi.back.member.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -45,12 +47,20 @@ public class MemberService {
     private final S3AsyncService s3AsyncService;
     private final S3UploadUtil s3UploadUtil;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * 회원가입
      */
     @Transactional
-    public CompletableFuture<Void> registerUser(SignUpRequestDto request, MultipartFile profileImage) {
+    public CompletableFuture<Void> registerUser(String userDataJson, MultipartFile profileImage) {
+        SignUpRequestDto request;
+        try {
+            request = objectMapper.readValue(userDataJson, SignUpRequestDto.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Invalid JSON format");
+        }
+
         if (memberRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");
         }
@@ -133,7 +143,16 @@ public class MemberService {
     /**
      * 회원 정보 수정
      */
-    public CompletableFuture<UpdateMemberResponseDto> updateMember(Long memberId, UpdateMemberRequestDto request, MultipartFile newProfileImage) {
+    public CompletableFuture<UpdateMemberResponseDto> updateMember(Long memberId, String userDataJson, MultipartFile newProfileImage) {
+        UpdateMemberRequestDto request;
+        try {
+            request = (userDataJson == null || userDataJson.isBlank())
+                    ? new UpdateMemberRequestDto()
+                    : objectMapper.readValue(userDataJson, UpdateMemberRequestDto.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Invalid JSON format");
+        }
+
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new EntityNotFoundException("회원 정보를 찾을 수 없습니다."));
 
@@ -151,6 +170,7 @@ public class MemberService {
             member.setName(request.getName());
         }
 
+        // 프로필 사진 수정
         String pathPrefix = "profile_images/" + member.getNickName();
         String defaultImageUrl = "https://default-image-url.com/default-profile.png";
 

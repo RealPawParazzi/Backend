@@ -1,5 +1,7 @@
 package pawparazzi.back.board.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -48,7 +50,16 @@ public class BoardService {
      * 게시물 등록
      */
     @Transactional
-    public BoardDetailDto createBoard(BoardCreateRequestDto requestDto, Long userId, MultipartFile titleImageFile) {
+    public BoardDetailDto createBoard(String userDataJson, Long userId, MultipartFile titleImageFile, List<MultipartFile> mediaFiles, String titleContent) {
+        BoardCreateRequestDto requestDto;
+        try {
+            requestDto = new ObjectMapper().readValue(userDataJson, BoardCreateRequestDto.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Invalid JSON format", e);
+        }
+        requestDto.setMediaFiles(mediaFiles);
+        requestDto.setTitleContent(titleContent);
+
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
@@ -131,10 +142,15 @@ public class BoardService {
      * 게시물 수정
      */
     @Transactional
-    public CompletableFuture<BoardDetailDto> updateBoard(Long boardId, Long userId,
-                                                         BoardUpdateRequestDto requestDto,
-                                                         List<MultipartFile> mediaFiles,
-                                                         MultipartFile titleImageFile) {
+    public CompletableFuture<BoardDetailDto> updateBoard(Long boardId, Long userId, String userDataJson, List<MultipartFile> mediaFiles, MultipartFile titleImageFile, String titleContent) {
+        BoardUpdateRequestDto requestDto;
+        try {
+            requestDto = new ObjectMapper().readValue(userDataJson, BoardUpdateRequestDto.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Invalid JSON format", e);
+        }
+        requestDto.setTitleContent(titleContent);
+
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new EntityNotFoundException("게시물을 찾을 수 없습니다."));
 
