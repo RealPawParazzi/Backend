@@ -1,18 +1,23 @@
 package pawparazzi.back.member.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.JwtException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import pawparazzi.back.member.dto.request.LoginRequestDto;
+import pawparazzi.back.member.dto.request.SignUpRequestDto;
+import pawparazzi.back.member.dto.request.UpdateMemberRequestDto;
 import pawparazzi.back.member.dto.response.MemberResponseDto;
 import pawparazzi.back.member.dto.response.UpdateMemberResponseDto;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.service.MemberService;
-import pawparazzi.back.security.user.CustomUserDetails;
+import pawparazzi.back.security.util.JwtUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -23,7 +28,9 @@ import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
 public class MemberController {
 
+    private final JwtUtil jwtUtil;
     private final MemberService memberService;
+    private final ObjectMapper objectMapper;
 
     /**
      * 회원 가입
@@ -33,10 +40,17 @@ public class MemberController {
             @RequestPart(value = "profileImage", required = false) MultipartFile profileImage,
             @RequestPart("userData") String userDataJson) {
 
+        // JSON 데이터를 DTO로 변환
+        SignUpRequestDto request;
+        try {
+            request = objectMapper.readValue(userDataJson, SignUpRequestDto.class);
+        } catch (JsonProcessingException e) {
+            return CompletableFuture.completedFuture(ResponseEntity.badRequest().body("Invalid JSON format"));
+        }
+
         // 비동기 회원가입 처리 후 응답 반환
-        return memberService.registerUser(userDataJson, profileImage)
-                .thenApply(unused -> ResponseEntity.ok("회원가입 성공"))
-                .exceptionally(ex -> ResponseEntity.badRequest().body("Invalid JSON format"));
+        return memberService.registerUser(request, profileImage)
+                .thenApply(unused -> ResponseEntity.ok("회원가입 성공"));
     }
 
     /**
@@ -52,8 +66,14 @@ public class MemberController {
      * 사용자 정보 조회
      */
     @GetMapping("/me")
-    public ResponseEntity<Member> getCurrentUser(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        Long memberId = userDetails.getId();
+    public ResponseEntity<Member> getCurrentUser(@RequestHeader("Authorization") String token) {
+        token = token.replace("Bearer ", "");
+        Long memberId;
+        try {
+            memberId = jwtUtil.extractMemberId(token);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         Member member = memberService.findById(memberId);
         return ResponseEntity.ok(member);
     }
@@ -63,23 +83,43 @@ public class MemberController {
      */
     @PatchMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public CompletableFuture<ResponseEntity<UpdateMemberResponseDto>> updateMember(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestHeader("Authorization") String token,
             @RequestPart(value = "profileImage", required = false) MultipartFile profileImage,
             @RequestPart(value = "userData", required = false) String userDataJson) {
 
-        Long memberId = userDetails.getId();
+        token = token.replace("Bearer ", "");
+        Long memberId;
+        try {
+            memberId = jwtUtil.extractMemberId(token);
+        } catch (JwtException e) {
+            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        }
 
-        return memberService.updateMember(memberId, userDataJson, profileImage)
-                .thenApply(ResponseEntity::ok)
-                .exceptionally(ex -> ResponseEntity.badRequest().body(null));
+        try {
+            UpdateMemberRequestDto request = (userDataJson == null || userDataJson.isBlank())
+                    ? new UpdateMemberRequestDto()
+                    : objectMapper.readValue(userDataJson, UpdateMemberRequestDto.class);
+
+            return memberService.updateMember(memberId, request, profileImage)
+                    .thenApply(ResponseEntity::ok);
+        } catch (JsonProcessingException e) {
+            return CompletableFuture.completedFuture(ResponseEntity.badRequest().body(null));
+        }
     }
 
     /**
      * 회원 탈퇴
      */
     @DeleteMapping("/delete")
-    public ResponseEntity<String> deleteMember(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        memberService.deleteMember(userDetails.getId());
+    public ResponseEntity<String> deleteMember(@RequestHeader("Authorization") String token) {
+        token = token.replace("Bearer ", "");
+        Long memberId;
+        try {
+            memberId = jwtUtil.extractMemberId(token);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        memberService.deleteMember(memberId);
         return ResponseEntity.ok("회원 탈퇴 완료");
     }
 
@@ -96,10 +136,17 @@ public class MemberController {
      * 로그아웃
      */
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(@AuthenticationPrincipal CustomUserDetails userDetails,
+    public ResponseEntity<String> logout(@RequestHeader("Authorization") String accessToken,
                                          @RequestBody Map<String, String> body) {
         String refreshToken = body.get("refreshToken");
-        memberService.logout(userDetails.getId(), refreshToken);
+        accessToken = accessToken.replace("Bearer ", "");
+        Long memberId;
+        try {
+            memberId = jwtUtil.extractMemberId(accessToken);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        memberService.logout(memberId, refreshToken);
         return ResponseEntity.ok("로그아웃 완료");
     }
 

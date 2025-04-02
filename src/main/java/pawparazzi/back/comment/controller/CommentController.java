@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 import pawparazzi.back.comment.dto.request.CommentRequestDto;
 import pawparazzi.back.comment.dto.response.CommentLikeResponseDto;
 import pawparazzi.back.comment.dto.response.CommentLikesResponseDto;
@@ -12,10 +11,9 @@ import pawparazzi.back.comment.dto.response.CommentResponseDto;
 import pawparazzi.back.comment.dto.response.CommentListResponseDto;
 import pawparazzi.back.comment.service.CommentLikeService;
 import pawparazzi.back.comment.service.CommentService;
-import pawparazzi.back.security.util.JwtUtil;
+import pawparazzi.back.security.user.CustomUserDetails;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
-import io.jsonwebtoken.JwtException;
-import org.springframework.http.HttpStatus;
 
 import java.util.Map;
 
@@ -26,7 +24,6 @@ public class CommentController {
 
     private final CommentService commentService;
     private final CommentLikeService commentLikeService;
-    private final JwtUtil jwtUtil;
 
     /**
      * 댓글 작성
@@ -34,15 +31,10 @@ public class CommentController {
     @PostMapping("/{boardId}")
     public ResponseEntity<CommentResponseDto> createComment(
             @PathVariable Long boardId,
-            @RequestHeader("Authorization") String token,
-            @RequestBody @Valid CommentRequestDto requestDto) { // DTO 적용
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody @Valid CommentRequestDto requestDto) {
 
-        Long memberId;
-        try {
-            memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        } catch (JwtException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Access Token Expired or Invalid");
-        }
+        Long memberId = userDetails.getId();
         CommentResponseDto response = commentService.createComment(boardId, memberId, requestDto);
         return ResponseEntity.ok(response);
     }
@@ -53,15 +45,10 @@ public class CommentController {
     @PutMapping("/{commentId}")
     public ResponseEntity<CommentResponseDto> updateComment(
             @PathVariable Long commentId,
-            @RequestHeader("Authorization") String token,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody Map<String, String> request) {
 
-        Long memberId;
-        try {
-            memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        } catch (JwtException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Access Token Expired or Invalid");
-        }
+        Long memberId = userDetails.getId();
         String content = request.get("content");
         CommentResponseDto response = commentService.updateComment(commentId, memberId, content);
         return ResponseEntity.ok(response);
@@ -73,14 +60,9 @@ public class CommentController {
     @DeleteMapping("/{commentId}")
     public ResponseEntity<Map<String, String>> deleteComment(
             @PathVariable Long commentId,
-            @RequestHeader("Authorization") String token) {
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        Long memberId;
-        try {
-            memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        } catch (JwtException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Access Token Expired or Invalid");
-        }
+        Long memberId = userDetails.getId();
         commentService.deleteComment(commentId, memberId);
 
         return ResponseEntity.ok(Map.of("message", "댓글이 삭제되었습니다."));
@@ -100,14 +82,9 @@ public class CommentController {
     @PostMapping("/{commentId}/like")
     public ResponseEntity<CommentLikeResponseDto> toggleCommentLike(
             @PathVariable Long commentId,
-            @RequestHeader("Authorization") String token) {
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        Long memberId;
-        try {
-            memberId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
-        } catch (JwtException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Access Token Expired or Invalid");
-        }
+        Long memberId = userDetails.getId();
         CommentLikeResponseDto response = commentLikeService.toggleCommentLike(commentId, memberId);
 
         return ResponseEntity.ok(response);
