@@ -15,7 +15,6 @@ import pawparazzi.back.pet.dto.PetResponseDto;
 import pawparazzi.back.pet.dto.PetUpdateDto;
 import pawparazzi.back.pet.entity.Pet;
 import pawparazzi.back.pet.repository.PetRepository;
-import pawparazzi.back.pet.util.PetImageHelper;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -39,15 +38,15 @@ public class PetService {
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        String pathPrefix = PetImageHelper.getPathPrefix(member.getNickName());
-        String defaultImageUrl = PetImageHelper.getDefaultImageUrl();
+        String pathPrefix = "pet_images/" + member.getNickName();
+        String defaultImageUrl = "https://default-image-url.com/default-pet.png";
 
         // S3 이미지 업로드 (비동기 처리)
         CompletableFuture<String> petImageUrlFuture = s3UploadUtil.uploadImageAsync(petImage, pathPrefix, defaultImageUrl);
 
         return petImageUrlFuture.thenApply(petImageUrl -> {
             Pet pet = new Pet(registerDto.getName(), registerDto.getType(), registerDto.getBirthDate(), petImageUrl, member);
-            member.addPet(pet);
+            member.addPet(pet); // Member에 반려동물 추가
             petRepository.save(pet);
             return new PetResponseDto(pet);
         });
@@ -93,8 +92,8 @@ public class PetService {
             throw new IllegalArgumentException("해당 반려동물을 수정할 권한이 없습니다.");
         }
 
-        String pathPrefix = PetImageHelper.getPathPrefix(pet.getMember().getNickName());
-        String defaultImageUrl = PetImageHelper.getDefaultImageUrl();
+        String pathPrefix = "pet_images/" + pet.getMember().getNickName();
+        String defaultImageUrl = "https://default-image-url.com/default-pet.png";
         String oldImageUrl = pet.getPetImg();
 
         // S3 이미지 업로드 (petImage가 있을 때만 비동기 처리)
@@ -113,7 +112,7 @@ public class PetService {
             return new PetResponseDto(pet);
         }).thenCombineAsync( // 기존 S3 이미지 삭제를 비동기 병렬 실행
                 (oldImageUrl != null && !oldImageUrl.equals(defaultImageUrl))
-                        ? s3AsyncService.deleteFile("pet_images/" + PetImageHelper.extractFileName(oldImageUrl))
+                        ? s3AsyncService.deleteFile("pet_images/" + extractFileName(oldImageUrl))
                         : CompletableFuture.completedFuture(null),
                 (updatedPet, ignored) -> updatedPet // 이미지 삭제 완료 여부와 상관없이 업데이트된 Pet 반환
         );
@@ -132,14 +131,14 @@ public class PetService {
         }
 
         String petImageUrl = pet.getPetImg();
-        String defaultImageUrl = PetImageHelper.getDefaultImageUrl();
+        String defaultImageUrl = "https://default-image-url.com/default-pet.png";
 
         // 먼저 DB에서 반려동물 삭제
         petRepository.delete(pet);
 
         // S3에서 기존 반려동물 이미지 삭제
         if (petImageUrl != null && !petImageUrl.equals(defaultImageUrl)) {
-            String fileName = PetImageHelper.extractFileName(petImageUrl);
+            String fileName = extractFileName(petImageUrl);
             return s3AsyncService.deleteFile("pet_images/" + fileName)
                     .exceptionally(ex -> {
                         System.err.println("S3 이미지 삭제 실패: " + ex.getMessage());
@@ -148,5 +147,17 @@ public class PetService {
         }
 
         return CompletableFuture.completedFuture(null);
+    }
+
+    private String extractFileName(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return null;
+        }
+
+        if (imageUrl.contains("/pet_images/")) {
+            return imageUrl.substring(imageUrl.lastIndexOf("/pet_images/") + "/pet_images/".length());
+        }
+
+        return imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
     }
 }
