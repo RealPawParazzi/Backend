@@ -8,6 +8,7 @@ import lombok.*;
 import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.follow.entity.Follow;
 import pawparazzi.back.pet.entity.Pet;
+import pawparazzi.back.place.entity.Place;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +48,9 @@ public class Member {
 
     @OneToMany(mappedBy = "follower", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Follow> followingList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Place> places = new ArrayList<>();
 
     public Member(String email, String password, String nickName, String profileImageUrl, String name) {
         this.email = email;
