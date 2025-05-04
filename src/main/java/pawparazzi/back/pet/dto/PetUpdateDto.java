@@ -2,6 +2,7 @@ package pawparazzi.back.pet.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import pawparazzi.back.pet.entity.Pet;
@@ -23,4 +24,7 @@ public class PetUpdateDto {
     private LocalDate birthDate;
 
     private String petImg;
+
+    @Size(max = 100)
+    private String petDetail;
 }
