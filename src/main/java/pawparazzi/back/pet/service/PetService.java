@@ -105,6 +105,7 @@ public class PetService {
         if (updateDto.getName() != null) pet.setName(updateDto.getName());
         if (updateDto.getType() != null) pet.setType(updateDto.getType());
         if (updateDto.getBirthDate() != null) pet.setBirthDate(updateDto.getBirthDate());
+        if (updateDto.getPetDetail() != null) pet.setPetDetail(updateDto.getPetDetail());
 
         return newImageFuture.thenApply(newImageUrl -> {
             pet.setPetImg(newImageUrl);

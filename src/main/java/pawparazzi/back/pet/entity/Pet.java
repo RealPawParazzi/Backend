@@ -30,6 +30,9 @@ public class Pet {
 
     private String petImg;
 
+    @Column(length = 100)
+    private String petDetail;
+
     @JsonIgnore
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id")
