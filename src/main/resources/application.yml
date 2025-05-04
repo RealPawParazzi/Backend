@@ -53,6 +53,14 @@ spring:
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
 
+file:
+  upload-dir: ${UPLOAD_DIR}
+  base-url: ${FILE_BASE_URL}
+
+ai:
+  server:
+    url: ${AI_SERVER_URL}
+
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION}
