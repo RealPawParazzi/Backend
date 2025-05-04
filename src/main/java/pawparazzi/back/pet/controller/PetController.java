@@ -132,4 +132,29 @@ public class PetController {
         return petService.deletePet(petId, userId)
                 .thenApply(ignored -> ResponseEntity.ok(Map.of("message", "반려동물이 삭제되었습니다.")));
     }
+
+    /**
+     * 포켓몬 배틀마냥 배틀
+     */
+    @PostMapping("/battle/{targetPetId}")
+    public ResponseEntity<String> battle(
+            @PathVariable Long targetPetId,
+            @RequestParam Long myPetId,
+            @RequestHeader("Authorization") String token) {
+
+        Long userId;
+        try {
+            userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        try {
+            String battleResult = petService.invokeLLMForBattle(myPetId, targetPetId, userId);
+            return ResponseEntity.ok(battleResult);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("배틀 중 오류가 발생했습니다.");
+        }
+    }
+
 }

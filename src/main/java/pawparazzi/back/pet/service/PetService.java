@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.client.RestTemplate;
 import pawparazzi.back.S3.S3UploadUtil;
 import pawparazzi.back.S3.service.S3AsyncService;
 import pawparazzi.back.member.entity.Member;
@@ -29,6 +30,8 @@ public class PetService {
     private final MemberRepository memberRepository;
     private final S3UploadUtil s3UploadUtil;
     private final S3AsyncService s3AsyncService;
+    private final RestTemplate restTemplate; // LLM 호출을 위한 RestTemplate
+
 
     /**
      * 반려동물 등록
@@ -148,6 +151,36 @@ public class PetService {
         }
 
         return CompletableFuture.completedFuture(null);
+    }
+
+    /**
+     * LLM 모델을 호출하여 배틀 결과 생성
+     */
+    public String invokeLLMForBattle(Long myPetId, Long targetPetId, Long userId) {
+        Pet myPet = petRepository.findById(myPetId)
+                .orElseThrow(() -> new EntityNotFoundException("내 반려동물을 찾을 수 없습니다."));
+
+        if (!myPet.getMember().getId().equals(userId)) {
+            throw new IllegalArgumentException("해당 반려동물로 배틀할 권한이 없습니다.");
+        }
+
+        Pet targetPet = petRepository.findById(targetPetId)
+                .orElseThrow(() -> new EntityNotFoundException("상대 반려동물을 찾을 수 없습니다."));
+
+        // LLM 호출 로직
+        String llmApiUrl = "http://llm-service/api/battle"; // LLM 서비스 URL
+        String requestPayload = String.format(
+                "{\"myPetDetail\": \"%s\", \"targetPetDetail\": \"%s\"}",
+                myPet.getPetDetail(), targetPet.getPetDetail()
+        );
+
+        try {
+            String response = restTemplate.postForObject(llmApiUrl, requestPayload, String.class);
+            return response != null ? response : "배틀 결과를 가져오지 못했습니다.";
+        } catch (Exception e) {
+            log.error("LLM 호출 실패: {}", e.getMessage());
+            throw new RuntimeException("LLM 호출 중 오류가 발생했습니다.");
+        }
     }
 
     private String extractFileName(String imageUrl) {
