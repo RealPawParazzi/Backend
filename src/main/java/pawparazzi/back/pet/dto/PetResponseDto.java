@@ -17,6 +17,7 @@ public class PetResponseDto {
     private Type type;
     private LocalDate birthDate;
     private String petImg;
+    private String petDetail;
     private MemberInfo member;
 
     public PetResponseDto(Pet pet) {
@@ -25,6 +26,7 @@ public class PetResponseDto {
         this.type = pet.getType();
         this.birthDate = pet.getBirthDate();
         this.petImg = pet.getPetImg();
+        this.petDetail = pet.getPetDetail();
         this.member = new MemberInfo(pet.getMember().getNickName(), pet.getMember().getEmail());
     }
 
