@@ -3,6 +3,7 @@ package pawparazzi.back.pet.service;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,8 +17,14 @@ import pawparazzi.back.pet.dto.PetResponseDto;
 import pawparazzi.back.pet.dto.PetUpdateDto;
 import pawparazzi.back.pet.entity.Pet;
 import pawparazzi.back.pet.repository.PetRepository;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -32,6 +39,9 @@ public class PetService {
     private final S3AsyncService s3AsyncService;
     private final RestTemplate restTemplate; // LLM 호출을 위한 RestTemplate
 
+
+    @Value("${ai.server.url}")
+    private String aiServerUrl;
 
     /**
      * 반려동물 등록
@@ -167,16 +177,26 @@ public class PetService {
         Pet targetPet = petRepository.findById(targetPetId)
                 .orElseThrow(() -> new EntityNotFoundException("상대 반려동물을 찾을 수 없습니다."));
 
-        // LLM 호출 로직
-        String llmApiUrl = "http://llm-service/api/battle"; // LLM 서비스 URL
-        String requestPayload = String.format(
-                "{\"myPetDetail\": \"%s\", \"targetPetDetail\": \"%s\"}",
-                myPet.getPetDetail(), targetPet.getPetDetail()
-        );
+        // LLM 호출을 위한 요청 데이터 구성
+        String llmApiUrl = aiServerUrl + "/api/battle"; // LLM 서비스 URL
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("myPetDetail", myPet.getPetDetail());
+        requestBody.put("targetPetDetail", targetPet.getPetDetail());
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
         try {
-            String response = restTemplate.postForObject(llmApiUrl, requestPayload, String.class);
-            return response != null ? response : "배틀 결과를 가져오지 못했습니다.";
+            // AI 서버에 POST 요청
+            ResponseEntity<String> response = restTemplate.postForEntity(llmApiUrl, entity, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return response.getBody() != null ? response.getBody() : "배틀 결과를 가져오지 못했습니다.";
+            } else {
+                throw new RuntimeException("LLM 호출 실패: " + response.getStatusCode());
+            }
         } catch (Exception e) {
             log.error("LLM 호출 실패: {}", e.getMessage());
             throw new RuntimeException("LLM 호출 중 오류가 발생했습니다.");
