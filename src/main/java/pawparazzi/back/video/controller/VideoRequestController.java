@@ -16,6 +16,7 @@ import pawparazzi.back.video.dto.VideoResponseDto;
 import pawparazzi.back.video.service.VideoRequestService;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 @RestController
@@ -28,7 +29,7 @@ public class VideoRequestController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<VideoResponseDto> createVideoRequest(
             @RequestPart(value = "request") String requestJson,
-            @RequestPart(value = "image") MultipartFile imageFile,
+            @RequestPart(value = "image") List<MultipartFile> imageFiles,
             @RequestHeader("Authorization") String token) throws IOException {
 
         // JSON 문자열을 객체로 수동 변환
@@ -55,7 +56,7 @@ public class VideoRequestController {
 
         CompletableFuture<VideoResponseDto> responseFuture = videoRequestService.createVideoRequest(
                 requestDto,
-                imageFile,
+                imageFiles,
                 userId
         );
 

@@ -14,9 +14,11 @@ import pawparazzi.back.video.repository.VideoRequestRepository;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,77 +35,80 @@ public class VideoRequestService {
     /**
      * 비디오 생성 요청을 처리하는 메소드 (비동기 업로드 방식으로 개선)
      */
-    public CompletableFuture<VideoResponseDto> createVideoRequest(VideoRequestDto requestDto, MultipartFile imageFile, Long userId) {
+    public CompletableFuture<VideoResponseDto> createVideoRequest(VideoRequestDto requestDto, List<MultipartFile> imageFiles, Long userId) {
         // 작업 ID 생성
         String jobId = UUID.randomUUID().toString();
 
         // 이미지 파일 업로드 (비동기 처리)
-        CompletableFuture<String> imageUrlFuture;
-        if (imageFile != null && !imageFile.isEmpty()) {
-            String pathPrefix = "videos/" + System.currentTimeMillis() + "_" + imageFile.getOriginalFilename();
-            imageUrlFuture = s3UploadUtil.uploadImageAsync(imageFile, pathPrefix, null);
-        } else {
-            imageUrlFuture = CompletableFuture.completedFuture(null);
-        }
+        List<CompletableFuture<String>> imageUploadFutures = imageFiles.stream()
+                .map(imageFile -> {
+                    String pathPrefix = "videos/" + System.currentTimeMillis() + "_" + imageFile.getOriginalFilename();
+                    return s3UploadUtil.uploadImageAsync(imageFile, pathPrefix, null);
+                })
+                .collect(Collectors.toList());
 
-        // 이미지 업로드 완료 후 비디오 요청 처리 및 AI 서버로 전송
-        return imageUrlFuture.thenApply(imageUrl -> {
-            // VideoRequest 엔티티 생성
-            VideoRequest videoRequest = VideoRequest.builder()
-                    .prompt(requestDto.getPrompt())
-                    .imageUrl(imageUrl)
-                    .userId(userId)
-                    .jobId(jobId)
-                    .build();
+        // 모든 이미지 업로드 완료 후 비디오 요청 처리 및 AI 서버로 전송
+        return CompletableFuture.allOf(imageUploadFutures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> imageUploadFutures.stream()
+                        .map(CompletableFuture::join)
+                        .collect(Collectors.toList()))
+                .thenApply(imageUrls -> {
+                    // VideoRequest 엔티티 생성
+                    VideoRequest videoRequest = VideoRequest.builder()
+                            .prompt(requestDto.getPrompt())
+                            .imageUrl(String.join(",", imageUrls)) // 여러 이미지 URL을 콤마로 연결
+                            .userId(userId)
+                            .jobId(jobId)
+                            .build();
 
-            // DB에 저장
-            videoRequest = videoRequestRepository.save(videoRequest);
-            final VideoRequest savedRequest = videoRequest; // final 변수로 복사 (람다 내부에서 사용하기 위함)
+                    // DB에 저장
+                    videoRequest = videoRequestRepository.save(videoRequest);
+                    final VideoRequest savedRequest = videoRequest; // final 변수로 복사 (람다 내부에서 사용하기 위함)
 
-            // AI 서버로 요청 전송
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+                    // AI 서버로 요청 전송
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(MediaType.APPLICATION_JSON);
 
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("jobId", jobId);
-            requestBody.put("prompt", requestDto.getPrompt());
-            requestBody.put("imageUrl", imageUrl);
-            requestBody.put("duration", requestDto.getDuration());
-            requestBody.put("additionalOptions", requestDto.getAdditionalOptions());
+                    Map<String, Object> requestBody = new HashMap<>();
+                    requestBody.put("jobId", jobId);
+                    requestBody.put("prompt", requestDto.getPrompt());
+                    requestBody.put("imageUrls", imageUrls); // 여러 이미지 URL 전달
+                    requestBody.put("duration", requestDto.getDuration());
+                    requestBody.put("additionalOptions", requestDto.getAdditionalOptions());
 
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+                    HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-            try {
-                ResponseEntity<Map> response = restTemplate.postForEntity(
-                        aiServerUrl + "/api/generate",
-                        entity,
-                        Map.class
-                );
+                    try {
+                        ResponseEntity<Map> response = restTemplate.postForEntity(
+                                aiServerUrl + "/api/generate",
+                                entity,
+                                Map.class
+                        );
 
-                if (response.getStatusCode().is2xxSuccessful()) {
-                    savedRequest.setStatus("PROCESSING");
-                } else {
-                    savedRequest.setStatus("FAILED");
-                    // 에러 메시지 처리 추가
-                    if (response.getBody() != null && response.getBody().containsKey("error")) {
-                        savedRequest.setErrorMessage((String) response.getBody().get("error"));
+                        if (response.getStatusCode().is2xxSuccessful()) {
+                            savedRequest.setStatus("PROCESSING");
+                        } else {
+                            savedRequest.setStatus("FAILED");
+                            // 에러 메시지 처리 추가
+                            if (response.getBody() != null && response.getBody().containsKey("error")) {
+                                savedRequest.setErrorMessage((String) response.getBody().get("error"));
+                            }
+                        }
+                    } catch (Exception e) {
+                        savedRequest.setStatus("FAILED");
+                        savedRequest.setErrorMessage(e.getMessage());
                     }
-                }
-            } catch (Exception e) {
-                savedRequest.setStatus("FAILED");
-                savedRequest.setErrorMessage(e.getMessage());
-            }
 
-            // 변경된 상태 저장
-            videoRequestRepository.save(savedRequest);
+                    // 변경된 상태 저장
+                    videoRequestRepository.save(savedRequest);
 
-            // 응답 DTO 생성
-            return VideoResponseDto.builder()
-                    .requestId(savedRequest.getId())
-                    .jobId(savedRequest.getJobId())
-                    .status(savedRequest.getStatus())
-                    .build();
-        });
+                    // 응답 DTO 생성
+                    return VideoResponseDto.builder()
+                            .requestId(savedRequest.getId())
+                            .jobId(savedRequest.getJobId())
+                            .status(savedRequest.getStatus())
+                            .build();
+                });
     }
 
     public VideoResponseDto checkStatus(String jobId) {
