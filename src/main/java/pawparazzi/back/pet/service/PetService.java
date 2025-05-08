@@ -25,6 +25,7 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -183,6 +184,8 @@ public class PetService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("myPetName", myPet.getName());
+        requestBody.put("targetPetName", targetPet.getName());
         requestBody.put("myPetDetail", myPet.getPetDetail());
         requestBody.put("targetPetDetail", targetPet.getPetDetail());
 
@@ -200,6 +203,29 @@ public class PetService {
         } catch (Exception e) {
             log.error("LLM 호출 실패: {}", e.getMessage());
             throw new RuntimeException("LLM 호출 중 오류가 발생했습니다.");
+        }
+    }
+
+    @Transactional
+    public void battleCountUpdate(Long myPetId, Long targetPetId, String winner) {
+        try {
+            Pet myPet = petRepository.findById(myPetId)
+                    .orElseThrow(() -> new IllegalArgumentException("내 반려동물을 찾을 수 없습니다."));
+
+            Pet targetPet = petRepository.findById(targetPetId)
+                    .orElseThrow(() -> new IllegalArgumentException("상대 반려동물을 찾을 수 없습니다."));
+
+            if (Objects.equals(winner, myPet.getName())) {
+                myPet.incrementWinCount();
+                targetPet.incrementLoseCount();
+            } else {
+                myPet.incrementLoseCount();
+                targetPet.incrementWinCount();
+            }
+            petRepository.save(myPet);
+            petRepository.save(targetPet);
+        } catch (Exception e) {
+            throw new RuntimeException("배틀 카운트 업데이트 실패: " + e.getMessage(), e);
         }
     }
 
