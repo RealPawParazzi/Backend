@@ -3,9 +3,11 @@ package pawparazzi.back.pet.service;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.client.RestTemplate;
 import pawparazzi.back.S3.S3UploadUtil;
 import pawparazzi.back.S3.service.S3AsyncService;
 import pawparazzi.back.member.entity.Member;
@@ -15,8 +17,15 @@ import pawparazzi.back.pet.dto.PetResponseDto;
 import pawparazzi.back.pet.dto.PetUpdateDto;
 import pawparazzi.back.pet.entity.Pet;
 import pawparazzi.back.pet.repository.PetRepository;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -29,6 +38,11 @@ public class PetService {
     private final MemberRepository memberRepository;
     private final S3UploadUtil s3UploadUtil;
     private final S3AsyncService s3AsyncService;
+    private final RestTemplate restTemplate; // LLM 호출을 위한 RestTemplate
+
+
+    @Value("${ai.server.url}")
+    private String aiServerUrl;
 
     /**
      * 반려동물 등록
@@ -148,6 +162,71 @@ public class PetService {
         }
 
         return CompletableFuture.completedFuture(null);
+    }
+
+    /**
+     * LLM 모델을 호출하여 배틀 결과 생성
+     */
+    public String invokeLLMForBattle(Long myPetId, Long targetPetId, Long userId) {
+        Pet myPet = petRepository.findById(myPetId)
+                .orElseThrow(() -> new EntityNotFoundException("내 반려동물을 찾을 수 없습니다."));
+
+        if (!myPet.getMember().getId().equals(userId)) {
+            throw new IllegalArgumentException("해당 반려동물로 배틀할 권한이 없습니다.");
+        }
+
+        Pet targetPet = petRepository.findById(targetPetId)
+                .orElseThrow(() -> new EntityNotFoundException("상대 반려동물을 찾을 수 없습니다."));
+
+        // LLM 호출을 위한 요청 데이터 구성
+        String llmApiUrl = aiServerUrl + "/api/battle"; // LLM 서비스 URL
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("myPetName", myPet.getName());
+        requestBody.put("targetPetName", targetPet.getName());
+        requestBody.put("myPetDetail", myPet.getPetDetail());
+        requestBody.put("targetPetDetail", targetPet.getPetDetail());
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+        try {
+            // AI 서버에 POST 요청
+            ResponseEntity<String> response = restTemplate.postForEntity(llmApiUrl, entity, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return response.getBody() != null ? response.getBody() : "배틀 결과를 가져오지 못했습니다.";
+            } else {
+                throw new RuntimeException("LLM 호출 실패: " + response.getStatusCode());
+            }
+        } catch (Exception e) {
+            log.error("LLM 호출 실패: {}", e.getMessage());
+            throw new RuntimeException("LLM 호출 중 오류가 발생했습니다.");
+        }
+    }
+
+    @Transactional
+    public void battleCountUpdate(Long myPetId, Long targetPetId, String winner) {
+        try {
+            Pet myPet = petRepository.findById(myPetId)
+                    .orElseThrow(() -> new IllegalArgumentException("내 반려동물을 찾을 수 없습니다."));
+
+            Pet targetPet = petRepository.findById(targetPetId)
+                    .orElseThrow(() -> new IllegalArgumentException("상대 반려동물을 찾을 수 없습니다."));
+
+            if (Objects.equals(winner, myPet.getName())) {
+                myPet.incrementWinCount();
+                targetPet.incrementLoseCount();
+            } else {
+                myPet.incrementLoseCount();
+                targetPet.incrementWinCount();
+            }
+            petRepository.save(myPet);
+            petRepository.save(targetPet);
+        } catch (Exception e) {
+            throw new RuntimeException("배틀 카운트 업데이트 실패: " + e.getMessage(), e);
+        }
     }
 
     private String extractFileName(String imageUrl) {

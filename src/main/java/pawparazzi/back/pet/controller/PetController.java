@@ -1,8 +1,10 @@
 package pawparazzi.back.pet.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.JwtException;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -132,4 +134,47 @@ public class PetController {
         return petService.deletePet(petId, userId)
                 .thenApply(ignored -> ResponseEntity.ok(Map.of("message", "반려동물이 삭제되었습니다.")));
     }
+
+    /**
+     * 포켓몬 배틀마냥 배틀
+     */
+    @PostMapping("/battle/{targetPetId}")
+    public ResponseEntity<String> battle(
+            @PathVariable Long targetPetId,
+            @RequestParam Long myPetId,
+            @RequestHeader("Authorization") String token) {
+
+        Long userId;
+        try {
+            userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            String battleResult = petService.invokeLLMForBattle(myPetId, targetPetId, userId);
+            JsonNode rootNode = objectMapper.readTree(battleResult);
+            JsonNode winnerNode = rootNode.get("winner");
+
+            if (winnerNode == null || winnerNode.asText().isBlank()){
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("배틀 결과에 승자 정보가 없습니다.");
+            }
+
+            String winner = winnerNode.asText().replace("\"", "");
+            petService.battleCountUpdate(myPetId, targetPetId, winner);
+
+            return ResponseEntity.ok(battleResult);
+        } catch (IllegalArgumentException e){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("해당 반려동물을 찾을 수 없습니다.");
+        } catch (JsonProcessingException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("배틀 결과를 처리하는 중 JSON 파싱 오류가 발생했습니다.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("배틀 중 오류가 발생했습니다.");
+        }
+    }
+
 }
