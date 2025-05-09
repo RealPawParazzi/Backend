@@ -13,6 +13,7 @@ import pawparazzi.back.board.entity.Board;
 import pawparazzi.back.board.repository.BoardMongoRepository;
 import pawparazzi.back.board.repository.BoardRepository;
 import pawparazzi.back.member.dto.KakaoUserDto;
+import pawparazzi.back.member.dto.NaverUserDto;
 import pawparazzi.back.member.dto.request.LoginRequestDto;
 import pawparazzi.back.member.dto.request.SignUpRequestDto;
 import pawparazzi.back.member.dto.request.UpdateMemberRequestDto;
@@ -263,6 +264,30 @@ public class MemberService {
                     kakaoUser.getNickname(),
                     kakaoUser.getProfileImageUrl(),
                     kakaoUser.getNickname()
+            );
+            memberRepository.save(newMember);
+            return newMember;
+        }
+    }
+
+    /**
+     * 네이버 로그인 회원 처리
+     */
+    @Transactional
+    public Member handleNaverLogin(NaverUserDto naverUser) {
+        Optional<Member> existingMember = memberRepository.findByEmail(naverUser.getEmail());
+
+        if (existingMember.isPresent()) {
+            return existingMember.get();
+        } else {
+            String randomPassword = passwordEncoder.encode(UUID.randomUUID().toString());
+
+            Member newMember = new Member(
+                    naverUser.getEmail(),
+                    randomPassword,
+                    naverUser.getName(),
+                    naverUser.getProfileImage(),
+                    naverUser.getName()
             );
             memberRepository.save(newMember);
             return newMember;
