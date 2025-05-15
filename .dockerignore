@@ -1,0 +1,12 @@
+.git
+.gitignore
+.gradle
+build
+!build/libs/*.jar
+.idea
+*.iws
+*.iml
+*.ipr
+README.md
+HELP.md
+.env

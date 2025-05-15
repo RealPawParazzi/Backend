@@ -1,11 +1,15 @@
 package pawparazzi.back.pet.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.netty.handler.codec.Headers;
 import jakarta.persistence.*;
 import lombok.*;
+import pawparazzi.back.battle.entity.Battle;
 import pawparazzi.back.member.entity.Member;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -36,6 +40,12 @@ public class Pet {
 
     @Column(length = 100)
     private String petDetail;
+
+    @OneToMany(mappedBy = "pet", cascade = CascadeType.ALL)
+    private List<Battle> battleAsPet1 = new ArrayList<>();
+
+    @OneToMany(mappedBy = "pet", cascade = CascadeType.ALL)
+    private List<Battle> battleAsPet2 = new ArrayList<>();
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.EAGER)
