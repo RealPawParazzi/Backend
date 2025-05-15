@@ -30,6 +30,10 @@ public class Pet {
 
     private String petImg;
 
+    private Integer winCount = 0;
+
+    private Integer loseCount = 0;
+
     @Column(length = 100)
     private String petDetail;
 
@@ -51,5 +55,21 @@ public class Pet {
         this.birthDate = birthDate;
         this.petImg = petImg;
         this.member = member;
+    }
+
+    public void incrementWinCount() {
+        if (this.winCount == null) {
+            this.winCount = 1;
+        } else {
+            this.winCount = this.winCount + 1;
+        }
+    }
+
+    public void incrementLoseCount() {
+        if (this.loseCount == null) {
+            this.loseCount = 1;
+        } else {
+            this.loseCount = this.loseCount + 1;
+        }
     }
 }

@@ -21,7 +21,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
-public class AuthController {
+public class KakaoAuthController {
 
     private final KakaoAuthService kakaoAuthService;
     private final MemberService memberService;

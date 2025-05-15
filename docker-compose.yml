@@ -1,0 +1,78 @@
+version: '3'
+services:
+  app:
+    image: 577638366670.dkr.ecr.ap-northeast-2.amazonaws.com/pawparazzi-docker-ecr
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+      - mongodb
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - PAWPARAZZI_DB_URL=jdbc:mysql://mysql:3306/pawparazzi?serverTimezone=UTC&characterEncoding=UTF-8
+      - PAWPARAZZI_DB_USERNAME=root
+      - PAWPARAZZI_DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - PAWPARAZZI_MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017/${MONGO_INITDB_DATABASE}
+      - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+      - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      - UPLOAD_DIR=${UPLOAD_DIR:-/tmp/uploads}
+      - FILE_BASE_URL=${FILE_BASE_URL:-http://localhost:8080/files}
+      - AI_SERVER_URL=${AI_SERVER_URL:-http://localhost:9000}
+      - JWT_SECRET=${JWT_SECRET:-default_jwt_secret_key_for_development_only}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
+      - KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
+      - KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
+      - KAKAO_REDIRECT_URI=${KAKAO_REDIRECT_URI}
+      - NAVER_CLIENT_ID=${NAVER_CLIENT_ID}
+      - NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET}
+      - NAVER_REDIRECT_URI=${NAVER_REDIRECT_URI}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-pawparazzi}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root}
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE:-pawparazzi}
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME:-root}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:-root}
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/pawparazzi?serverTimezone=UTC&characterEncoding=UTF-8
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017/${MONGO_INITDB_DATABASE}
+      - SPRING_DATA_MONGODB_DATABASE=${MONGO_INITDB_DATABASE}
+      - SPRING_DATA_MONGODB_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - SPRING_DATA_MONGODB_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+
+    networks:
+      - app-network
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - app-network
+
+  mongodb:
+    image: mongo:latest
+    environment:
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE}
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  mongodb-data:

@@ -27,7 +27,9 @@ import pawparazzi.back.member.repository.MemberRepository;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -50,7 +52,11 @@ public class BoardService {
      * 게시물 등록
      */
     @Transactional
-    public BoardDetailDto createBoard(String userDataJson, Long userId, MultipartFile titleImageFile, List<MultipartFile> mediaFiles, String titleContent) {
+    public BoardDetailDto createBoard(String userDataJson, Long userId,
+                                      MultipartFile titleImageFile, List<MultipartFile> mediaFiles,
+                                      String titleContent) {
+
+        // 1. JSON 파싱
         BoardCreateRequestDto requestDto;
         try {
             requestDto = new ObjectMapper().readValue(userDataJson, BoardCreateRequestDto.class);
@@ -60,6 +66,7 @@ public class BoardService {
         requestDto.setMediaFiles(mediaFiles);
         requestDto.setTitleContent(titleContent);
 
+        // 2. 사용자 조회
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
@@ -67,28 +74,41 @@ public class BoardService {
             throw new IllegalArgumentException("게시물 공개 설정은 필수 입력값입니다.");
         }
 
-        // MongoDB에 게시물 저장 (임시 저장)
+        // 3. MongoDB 임시 저장
         BoardDocument boardDocument = new BoardDocument(null, requestDto.getTitle(), null, requestDto.getTitleContent(), new ArrayList<>());
         boardDocument = boardMongoRepository.save(boardDocument);
 
-        // MySQL에 게시물 저장
+        // 4. MySQL 저장
         Board board = new Board(member, boardDocument.getId(), requestDto.getVisibility());
         boardRepository.save(board);
 
-        // 컨텐츠 변환
-        List<BoardDocument.ContentDto> contents = requestDto.getContents().stream()
-                .map(dto -> new BoardDocument.ContentDto(dto.getType(), dto.getValue()))
-                .collect(Collectors.toList());
-
-        // S3 비동기 업로드
+        // 5. S3 비동기 업로드
         CompletableFuture<List<String>> uploadFuture = uploadFilesToS3(requestDto.getMediaFiles(), board.getId());
-
-        // S3 업로드된 이미지 URL을 MongoDB 컨텐츠에 추가
         List<String> uploadedUrls = uploadFuture.join();
-        uploadedUrls.forEach(url -> contents.add(new BoardDocument.ContentDto("File", url)));
 
+        // 6. 파일명 ↔ S3 URL 매핑
+        Map<String, String> fileNameToUrl = new HashMap<>();
+        for (int i = 0; i < mediaFiles.size(); i++) {
+            fileNameToUrl.put(mediaFiles.get(i).getOriginalFilename(), uploadedUrls.get(i));
+        }
+
+        // 7. 콘텐츠 구성 (순서 보존)
+        List<BoardDocument.ContentDto> contents = new ArrayList<>();
+        for (BoardCreateRequestDto.ContentDto dto : requestDto.getContents()) {
+            if ("Text".equals(dto.getType())) {
+                contents.add(new BoardDocument.ContentDto("Text", dto.getValue()));
+            } else if ("File".equals(dto.getType())) {
+                String url = fileNameToUrl.get(dto.getValue());
+                if (url != null) {
+                    contents.add(new BoardDocument.ContentDto("File", url));
+                }
+            }
+        }
+
+        // 8. 대표 이미지 추출
         String titleImage = getTitleImageUrl(titleImageFile, uploadedUrls);
 
+        // 9. MongoDB 최종 저장
         boardDocument.setMysqlId(board.getId());
         boardDocument.setContents(contents);
         boardDocument.setTitleImage(titleImage);
@@ -142,7 +162,11 @@ public class BoardService {
      * 게시물 수정
      */
     @Transactional
-    public CompletableFuture<BoardDetailDto> updateBoard(Long boardId, Long userId, String userDataJson, List<MultipartFile> mediaFiles, MultipartFile titleImageFile, String titleContent) {
+    public CompletableFuture<BoardDetailDto> updateBoard(Long boardId, Long userId,
+                                                         String userDataJson, List<MultipartFile> mediaFiles,
+                                                         MultipartFile titleImageFile, String titleContent) {
+
+        // 1. JSON 파싱
         BoardUpdateRequestDto requestDto;
         try {
             requestDto = new ObjectMapper().readValue(userDataJson, BoardUpdateRequestDto.class);
@@ -151,9 +175,9 @@ public class BoardService {
         }
         requestDto.setTitleContent(titleContent);
 
+        // 2. 사용자 권한 확인
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new EntityNotFoundException("게시물을 찾을 수 없습니다."));
-
         if (!board.getAuthor().getId().equals(userId)) {
             throw new IllegalArgumentException("게시물 수정 권한이 없습니다.");
         }
@@ -161,49 +185,58 @@ public class BoardService {
         BoardDocument boardDocument = boardMongoRepository.findByMysqlId(boardId)
                 .orElseThrow(() -> new EntityNotFoundException("MongoDB에서 해당 게시글을 찾을 수 없습니다."));
 
+        // 3. 기존 S3 파일 삭제
         String folderPath = "board_images/" + boardId + "/";
         List<String> existingFileKeys = s3AsyncService.listFilesInFolder(folderPath);
-
         CompletableFuture<Void> deleteFuture = existingFileKeys.isEmpty()
                 ? CompletableFuture.completedFuture(null)
-                : s3AsyncService.deleteFiles(existingFileKeys)
-                .exceptionally(ex -> {
-                    System.err.println("S3 기존 이미지 삭제 실패: " + ex.getMessage());
-                    return null;
-                });
+                : s3AsyncService.deleteFiles(existingFileKeys).exceptionally(ex -> {
+            System.err.println("S3 기존 이미지 삭제 실패: " + ex.getMessage());
+            return null;
+        });
 
-        boardDocument.setContents(
-                boardDocument.getContents().stream()
-                        .filter(content -> !"image".equals(content.getType()))
-                        .toList()
-        );
-
+        // 4. S3 새 파일 업로드
         CompletableFuture<List<String>> uploadFuture = (mediaFiles == null || mediaFiles.isEmpty())
                 ? CompletableFuture.completedFuture(new ArrayList<>())
-                : uploadFilesToS3(mediaFiles, board.getId());
+                : uploadFilesToS3(mediaFiles, boardId);
 
         return CompletableFuture.allOf(deleteFuture, uploadFuture)
                 .thenCompose(ignored -> uploadFuture.thenApply(uploadedUrls -> {
-                    List<BoardDocument.ContentDto> updatedContents = new ArrayList<>();
-                    if (requestDto.getContents() != null && !requestDto.getContents().isEmpty()) {
-                        updatedContents.addAll(requestDto.getContents().stream()
-                                .map(dto -> new BoardDocument.ContentDto(dto.getType(), dto.getValue()))
-                                .toList());
+
+                    // 5. 파일명 ↔ URL 매핑
+                    Map<String, String> fileNameToUrl = new HashMap<>();
+                    for (int i = 0; i < mediaFiles.size(); i++) {
+                        fileNameToUrl.put(mediaFiles.get(i).getOriginalFilename(), uploadedUrls.get(i));
                     }
-                    uploadedUrls.forEach(url -> updatedContents.add(new BoardDocument.ContentDto("image", url)));
 
-                    boardDocument.setContents(updatedContents);
+                    // 🔥 기존 콘텐츠 초기화 (덮어쓰기)
+                    List<BoardDocument.ContentDto> updatedContents = new ArrayList<>();
 
+                    // 6. 콘텐츠 재구성 (Text는 그대로, File은 S3 URL로 변환하여 image 타입으로)
+                    for (BoardUpdateRequestDto.ContentDto dto : requestDto.getContents()) {
+                        if ("Text".equals(dto.getType())) {
+                            updatedContents.add(new BoardDocument.ContentDto("Text", dto.getValue()));
+                        } else if ("File".equals(dto.getType())) {
+                            String url = fileNameToUrl.get(dto.getValue());
+                            if (url != null) {
+                                updatedContents.add(new BoardDocument.ContentDto("image", url)); // 타입 통일
+                            }
+                        }
+                    }
+
+                    // 7. 대표 이미지 추출
                     String titleImage = getTitleImageUrl(titleImageFile, uploadedUrls);
-                    boardDocument.setTitleImage(titleImage);
 
+                    // 8. MongoDB 업데이트
+                    boardDocument.setContents(updatedContents);
                     boardDocument.setTitleContent(requestDto.getTitleContent());
+                    boardDocument.setTitleImage(titleImage);
+                    boardMongoRepository.save(boardDocument);
 
+                    // 9. MySQL 업데이트
                     if (requestDto.getVisibility() != null) {
                         board.setVisibility(requestDto.getVisibility());
                     }
-
-                    boardMongoRepository.save(boardDocument);
                     boardRepository.save(board);
 
                     return convertToBoardDetailDto(board, boardDocument);
