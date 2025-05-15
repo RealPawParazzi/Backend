@@ -1,9 +1,6 @@
 package pawparazzi.back.video.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,7 +18,8 @@ public class VideoRequestDto {
     private String imageUrl;
 
     @NotNull(message = "영상 길이를 선택하세요")
-    @Pattern(regexp = "^(5|10)$", message = "영상 길이는 5초 또는 10초만 가능합니다")
+    @Min(value = 5, message = "영상 길이는 최소 5초입니다.")
+    @Max(value = 10, message = "영상 길이는 최대 10초입니다.")
     private Integer duration = 5; // 기본값 5로 설정
 
     private String additionalOptions;
