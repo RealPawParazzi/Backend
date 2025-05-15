@@ -3,6 +3,7 @@ package pawparazzi.back.S3.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import pawparazzi.back.S3.dto.S3ResponseDto;
 import pawparazzi.back.S3.service.S3AsyncService;
 
 import java.io.IOException;
@@ -22,26 +23,49 @@ public class ImageAsyncController {
      * 비동기적으로 이미지 업로드
      */
     @PostMapping("/upload")
-    public CompletableFuture<ResponseEntity<String>> uploadImage(@RequestParam("file") MultipartFile file) {
+    public CompletableFuture<ResponseEntity<S3ResponseDto>> uploadImage(@RequestParam("file") MultipartFile file) {
         try {
             String contentType = file.getContentType();
             byte[] fileBytes = file.getBytes();
             String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
 
             return s3AsyncService.uploadFile(fileName, fileBytes, contentType)
-                    .thenApply(url -> ResponseEntity.ok("File uploaded successfully: " + url));
+                    .thenApply(url -> ResponseEntity.ok(
+                            S3ResponseDto.builder()
+                                    .message("File uploaded successfully")
+                                    .url(url)
+                                    .fileName(fileName)
+                                    .build()
+                    ));
         } catch (IOException e) {
-            return CompletableFuture.completedFuture(ResponseEntity.badRequest().body("File upload failed: " + e.getMessage()));
+            return CompletableFuture.completedFuture(ResponseEntity.badRequest().body(
+                    S3ResponseDto.builder()
+                            .message("File upload failed")
+                            .error(e.getMessage())
+                            .build()
+            ));
         }
     }
+
 
     /**
      * 비동기적으로 이미지 삭제
      */
     @DeleteMapping("/delete")
-    public CompletableFuture<ResponseEntity<String>> deleteImage(@RequestParam("fileName") String fileName) {
+    public CompletableFuture<ResponseEntity<S3ResponseDto>> deleteImage(@RequestParam("fileName") String fileName) {
         return s3AsyncService.deleteFile(fileName)
-                .thenApply(voidRes -> ResponseEntity.ok("File deleted successfully: " + fileName))
-                .exceptionally(ex -> ResponseEntity.badRequest().body("File delete failed: " + ex.getMessage()));
+                .thenApply(voidRes -> ResponseEntity.ok(
+                        S3ResponseDto.builder()
+                                .message("File deleted successfully")
+                                .fileName(fileName)
+                                .build()
+                ))
+                .exceptionally(ex -> ResponseEntity.badRequest().body(
+                        S3ResponseDto.builder()
+                                .message("File delete failed")
+                                .fileName(fileName)
+                                .error(ex.getMessage())
+                                .build()
+                ));
     }
 }
