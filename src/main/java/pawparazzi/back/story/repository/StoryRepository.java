@@ -19,7 +19,7 @@ public interface StoryRepository extends JpaRepository<Story, Long> {
     // 특정 작성자의 만료되지 않은 스토리 전체 조회
     List<Story> findByMemberIdAndExpiredFalse(Long memberId);
 
-    List<Story> findByExpiredFalse();
+    List<Story> findByExpiredFalseOrderByCreatedAtDesc();
 
     List<Story> findByExpiredFalseAndCreatedAtBefore(LocalDateTime cutoff);
 }

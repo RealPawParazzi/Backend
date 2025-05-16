@@ -177,7 +177,7 @@ public class StoryService {
      */
     @Transactional(readOnly = true)
     public List<UserStoryGroupDto> getGroupedStories(Long viewerId) {
-        List<Story> stories = storyRepository.findByExpiredFalse();
+        List<Story> stories = storyRepository.findByExpiredFalseOrderByCreatedAtDesc();
 
         // 사용자별로 그룹핑
         java.util.Map<Member, List<Story>> groupedByUser = stories.stream()
