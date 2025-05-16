@@ -200,4 +200,40 @@ public class StoryService {
                         .build())
                 .collect(java.util.stream.Collectors.toList());
     }
+
+    /**
+     * 스토리 수정
+     */
+    @Transactional
+    public StoryResponseDto updateStory(Long storyId, Long memberId, String caption, MultipartFile mediaFile) {
+        Story story = storyRepository.findById(storyId)
+                .orElseThrow(() -> new IllegalArgumentException("스토리를 찾을 수 없습니다."));
+
+        if (!story.getMember().getId().equals(memberId)) {
+            throw new IllegalArgumentException("스토리를 수정할 권한이 없습니다.");
+        }
+
+        if (caption != null) {
+            story.setCaption(caption.trim());
+        } else {
+            story.setCaption("");
+        }
+
+        if (mediaFile != null && !mediaFile.isEmpty()) {
+            // 기존 이미지 삭제
+            String oldFileName = story.getMediaUrl().substring(story.getMediaUrl().lastIndexOf("/") + 1);
+            s3AsyncService.deleteFile("story/" + oldFileName).join();
+
+            // 새 이미지 업로드
+            try {
+                String newFileName = "story/" + System.currentTimeMillis() + "_" + mediaFile.getOriginalFilename();
+                String newMediaUrl = s3AsyncService.uploadFile(newFileName, mediaFile.getBytes(), mediaFile.getContentType()).join();
+                story.setMediaUrl(newMediaUrl);
+            } catch (IOException e) {
+                throw new RuntimeException("스토리 이미지 수정 중 오류 발생", e);
+            }
+        }
+
+        return StoryResponseDto.of(story);
+    }
 }
