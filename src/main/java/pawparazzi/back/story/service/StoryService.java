@@ -129,7 +129,6 @@ public class StoryService {
         List<Story> toExpire = storyRepository.findByExpiredFalseAndCreatedAtBefore(cutoff);
 
         toExpire.forEach(story -> {
-            // Delete media file from S3
             String fileName = story.getMediaUrl().substring(story.getMediaUrl().lastIndexOf("/") + 1);
             s3AsyncService.deleteFile("story/" + fileName).join();
         });
