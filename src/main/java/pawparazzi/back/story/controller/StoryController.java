@@ -1,6 +1,7 @@
 package pawparazzi.back.story.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +22,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class StoryController {
 
-    private final StoryService storyService;
+    @Autowired
+    private StoryService storyService;
 
     /**
      * 스토리 등록
@@ -106,5 +108,20 @@ public class StoryController {
         storyService.deleteStory(storyId, memberId);
 
         return ResponseEntity.ok(ApiResponse.ok("스토리가 성공적으로 삭제되었습니다.", null));
+    }
+
+    /**
+     * 스토리 수정
+     */
+    @PutMapping(value = "/{storyId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, Long>>> updateStory(
+            @PathVariable Long storyId,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestPart(value = "caption", required = false) String caption,
+            @RequestPart(value = "mediaFile", required = false) MultipartFile mediaFile) {
+
+        Long memberId = userDetails.getId();
+        Long updatedStoryId = storyService.updateStory(storyId, memberId, caption, mediaFile).getId();
+        return ResponseEntity.ok(ApiResponse.ok("스토리 수정 성공", Map.of("storyId", updatedStoryId)));
     }
 }
