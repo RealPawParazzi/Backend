@@ -1,4 +1,4 @@
-package pawparazzi.back.global.response;
+package pawparazzi.back.exception;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

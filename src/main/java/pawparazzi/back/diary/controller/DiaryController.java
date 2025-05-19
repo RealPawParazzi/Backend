@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import pawparazzi.back.diary.dto.DiaryResponse;
 import pawparazzi.back.diary.dto.DiaryCreateRequest;
 import pawparazzi.back.diary.service.DiaryService;
-import pawparazzi.back.global.response.ApiResponse;
+import pawparazzi.back.exception.ApiResponse;
 import pawparazzi.back.security.user.CustomUserDetails;
 
 @RestController

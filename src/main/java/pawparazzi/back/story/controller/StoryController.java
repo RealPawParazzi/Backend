@@ -6,7 +6,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import pawparazzi.back.global.response.ApiResponse;
+import pawparazzi.back.exception.ApiResponse;
 import pawparazzi.back.story.dto.response.StoryResponseDto;
 import pawparazzi.back.story.dto.response.StoryViewListResponseDto;
 import pawparazzi.back.story.dto.response.UserStoryGroupDto;
