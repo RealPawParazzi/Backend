@@ -38,7 +38,7 @@ public class StoryController {
         Long storyId = storyService.createStory(memberId, caption, mediaFile);
 
         return ResponseEntity.ok(
-                ApiResponse.ok("스토리가 성공적으로 등록되었습니다.", Map.of("storyId", storyId))
+                ApiResponse.ok("스토리가 성공적으로 등록되었습니다.", Map.of("id", storyId))
         );
     }
 

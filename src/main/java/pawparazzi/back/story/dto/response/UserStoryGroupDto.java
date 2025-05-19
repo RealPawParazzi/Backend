@@ -20,7 +20,7 @@ public class UserStoryGroupDto {
     @Builder
     @AllArgsConstructor
     public static class StoryDto {
-        private Long storyId;
+        private Long id;
         private String mediaUrl;
         private String caption;
         private LocalDateTime createdAt;
