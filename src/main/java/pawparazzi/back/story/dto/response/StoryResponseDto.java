@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class StoryResponseDto {
-    private Long id;
+    private Long storyId;
     private Long memberId;
     private String mediaUrl;
     private String caption;
@@ -21,7 +21,7 @@ public class StoryResponseDto {
 
     public static StoryResponseDto of(pawparazzi.back.story.entity.Story story) {
         return StoryResponseDto.builder()
-                .id(story.getId())
+                .storyId(story.getId())
                 .memberId(story.getMember().getId())
                 .mediaUrl(story.getMediaUrl())
                 .caption(story.getCaption())

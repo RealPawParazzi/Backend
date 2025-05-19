@@ -38,7 +38,7 @@ public class StoryController {
         Long storyId = storyService.createStory(memberId, caption, mediaFile);
 
         return ResponseEntity.ok(
-                ApiResponse.ok("스토리가 성공적으로 등록되었습니다.", Map.of("id", storyId))
+                ApiResponse.ok("스토리가 성공적으로 등록되었습니다.", Map.of("storyId", storyId))
         );
     }
 
@@ -121,7 +121,7 @@ public class StoryController {
             @RequestPart(value = "mediaFile", required = false) MultipartFile mediaFile) {
 
         Long memberId = userDetails.getId();
-        Long updatedStoryId = storyService.updateStory(storyId, memberId, caption, mediaFile).getId();
+        Long updatedStoryId = storyService.updateStory(storyId, memberId, caption, mediaFile).getStoryId();
         return ResponseEntity.ok(ApiResponse.ok("스토리 수정 성공", Map.of("storyId", updatedStoryId)));
     }
 }
