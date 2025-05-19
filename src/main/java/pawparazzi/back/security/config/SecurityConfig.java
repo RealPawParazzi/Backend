@@ -41,6 +41,7 @@ public class SecurityConfig {
 
                         // 인증 없이 접근 가능한 API
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/admin/**").permitAll()
                         .requestMatchers("/api/async/images/**").permitAll()
                         .requestMatchers("/api/pets/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/boards/**").permitAll()
@@ -82,7 +83,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:8082", "http://192.168.0.10:8081"));
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:8082",
+                "http://192.168.0.10:8081",
+                "http://localhost:5173"
+        ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
