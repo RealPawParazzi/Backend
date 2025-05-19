@@ -133,7 +133,11 @@ public class StoryService {
             s3AsyncService.deleteFile("story/" + fileName).join();
         });
 
-        toExpire.forEach(story -> story.setExpired(true));
+        for (Story story : toExpire) {
+            storyViewRepository.deleteAllByStoryId(story.getId());
+            story.setExpired(true);
+        }
+
         storyRepository.saveAll(toExpire);
         storyRepository.deleteAll(toExpire);
     }
