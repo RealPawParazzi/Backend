@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class DiaryResponse {
-    private Long diaryId;
+    private Long id;
     private String title;
     private String content;
     private LocalDateTime createdAt;
