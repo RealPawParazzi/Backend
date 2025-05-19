@@ -2,8 +2,8 @@ package pawparazzi.back.backoffice.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import pawparazzi.back.backoffice.dto.MemberListWrapperResponse;
-import pawparazzi.back.backoffice.dto.MemberResponse;
+import pawparazzi.back.backoffice.dto.member.MemberListWrapperResponse;
+import pawparazzi.back.backoffice.dto.member.MemberResponse;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
 import jakarta.persistence.EntityNotFoundException;
