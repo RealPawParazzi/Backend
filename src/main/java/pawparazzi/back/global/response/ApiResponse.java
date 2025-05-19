@@ -30,4 +30,9 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> error(int status, String message) {
         return new ApiResponse<>(status, message, null);
     }
+
+    // 권한 없음 응답
+    public static <T> ApiResponse<T> forbidden(String message) {
+        return new ApiResponse<>(403, message, null);
+    }
 }

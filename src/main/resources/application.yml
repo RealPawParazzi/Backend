@@ -82,4 +82,10 @@ aws:
   region: ${AWS_REGION}
   s3-bucket: ${AWS_S3_BUCKET}
 
+openai:
+  secret-key: ${OPENAI_API_KEY}
+  model: gpt-3.5-turbo
+  api:
+    url: https://api.openai.com/v1/chat/completions
+
 spring.config.import: optional:.env
