@@ -2,8 +2,8 @@ package pawparazzi.back.backoffice.controller;
 
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
-import pawparazzi.back.backoffice.dto.MemberListWrapperResponse;
-import pawparazzi.back.backoffice.dto.MemberResponse;
+import pawparazzi.back.backoffice.dto.member.MemberListWrapperResponse;
+import pawparazzi.back.backoffice.dto.member.MemberResponse;
 import pawparazzi.back.backoffice.service.MemberBackService;
 
 import java.util.Map;

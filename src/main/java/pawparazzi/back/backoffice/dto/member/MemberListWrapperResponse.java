@@ -1,4 +1,4 @@
-package pawparazzi.back.backoffice.dto;
+package pawparazzi.back.backoffice.dto.member;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
