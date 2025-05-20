@@ -40,6 +40,15 @@ public class Member {
     @Column(name = "profile_image_url", length = 1024)
     private String profileImageUrl;
 
+    @Column(name = "created_at", updatable = false)
+    private java.time.LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = java.time.LocalDateTime.now();
+    }
+
+
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Pet> pets = new ArrayList<>();
 

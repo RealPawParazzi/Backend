@@ -1,12 +1,12 @@
 package pawparazzi.back.backoffice.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import pawparazzi.back.backoffice.dto.inquiry.InquiryListWrapperResponse;
 import pawparazzi.back.backoffice.dto.inquiry.InquiryResponse;
-import pawparazzi.back.backoffice.service.inquiryBackService;
+import pawparazzi.back.backoffice.service.inquiryBackServiceImpl;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -14,7 +14,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class InquiryBackController {
 
-    private final inquiryBackService inquiryService;
+    @Autowired
+    private final inquiryBackServiceImpl inquiryService;
 
     @GetMapping("/list")
     public InquiryListWrapperResponse getAllInquiries() {
@@ -29,7 +30,7 @@ public class InquiryBackController {
     @DeleteMapping("/{inquiryId}/delete")
     public Map<String, String> deleteInquiry(@PathVariable Long inquiryId) {
         inquiryService.deleteInquiryByAdmin(inquiryId);
-        return Map.of("message", "Inquiry deleted successfully");
+        return Map.of("message", "답변 삭제를 성공하였습니다.");
     }
 
     @PostMapping("/{inquiryId}/answer")

@@ -70,6 +70,7 @@ public class MemberService {
         // 업로드 완료 후 Member 저장
         return profileImageUrlFuture.thenAccept(profileImageUrl -> {
             Member member = new Member(request.getEmail(), encodedPassword, request.getNickName(), profileImageUrl, request.getName());
+            member.setCreatedAt(LocalDateTime.now());
             memberRepository.save(member);
         });
     }
@@ -265,6 +266,7 @@ public class MemberService {
                     kakaoUser.getProfileImageUrl(),
                     kakaoUser.getNickname()
             );
+            newMember.setCreatedAt(LocalDateTime.now());
             memberRepository.save(newMember);
             return newMember;
         }
@@ -289,6 +291,7 @@ public class MemberService {
                     naverUser.getProfileImage(),
                     naverUser.getName()
             );
+            newMember.setCreatedAt(LocalDateTime.now());
             memberRepository.save(newMember);
             return newMember;
         }
