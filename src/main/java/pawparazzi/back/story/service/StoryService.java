@@ -13,8 +13,10 @@ import pawparazzi.back.story.dto.response.StoryViewResponseDto;
 import pawparazzi.back.story.dto.response.UserStoryGroupDto;
 import pawparazzi.back.story.entity.Story;
 import pawparazzi.back.story.entity.StoryView;
+import pawparazzi.back.story.entity.StoryLog;
 import pawparazzi.back.story.repository.StoryRepository;
 import pawparazzi.back.story.repository.StoryViewRepository;
+import pawparazzi.back.story.repository.StoryLogRepository;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -29,6 +31,7 @@ public class StoryService {
     private final StoryViewRepository storyViewRepository;
     private final MemberRepository memberRepository;
     private final S3AsyncService s3AsyncService;
+    private final StoryLogRepository storyLogRepository;
 
     /**
      * 스토리 생성
@@ -54,6 +57,10 @@ public class StoryService {
                 .expired(false)
                 .build();
         Story savedStory = storyRepository.save(story);
+
+        StoryLog storyLog = new StoryLog(member.getId(), LocalDateTime.now());
+        storyLogRepository.save(storyLog);
+
         return savedStory.getId();
     }
 

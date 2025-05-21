@@ -52,4 +52,12 @@ public class CountBackController {
         return Map.of("data", monthlyCounts);
     }
 
+
+
+    @GetMapping("/story/monthly")
+    public Map<String, int[]> getMonthlyStoryStats() {
+        int[] monthlyCounts = countBackService.getMonthlyStoryCounts();
+        return Map.of("data", monthlyCounts);
+    }
+
 }

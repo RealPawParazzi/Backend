@@ -64,7 +64,7 @@ public class MemberService {
 
         // 프로필 이미지 업로드 (비동기 처리)
         String pathPrefix = "profile_images/" + request.getNickName();
-        String defaultImageUrl = "https://default-image-url.com/default-profile.png";
+        String defaultImageUrl = "";
         CompletableFuture<String> profileImageUrlFuture = s3UploadUtil.uploadImageAsync(profileImage, pathPrefix, defaultImageUrl);
 
         // 업로드 완료 후 Member 저장

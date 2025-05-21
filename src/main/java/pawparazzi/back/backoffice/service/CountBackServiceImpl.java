@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import pawparazzi.back.board.repository.BoardRepository;
 import pawparazzi.back.member.repository.MemberRepository;
 import pawparazzi.back.pet.repository.PetRepository;
-import pawparazzi.back.story.repository.StoryRepository;
+import pawparazzi.back.story.repository.StoryLogRepository;
 
 import java.util.List;
 
@@ -16,7 +16,7 @@ public class CountBackServiceImpl implements CountBackService {
     private final MemberRepository memberRepository;
     private final BoardRepository boardRepository;
     private final PetRepository petRepository;
-    private final StoryRepository storyRepository;
+    private final StoryLogRepository storyLogRepository;
 
     public long countUsers() {
         return memberRepository.count();
@@ -31,7 +31,7 @@ public class CountBackServiceImpl implements CountBackService {
     }
 
     public long countStories() {
-        return storyRepository.count();
+        return storyLogRepository.count();
     }
 
     public int[] getMonthlyUserCounts() {
@@ -50,6 +50,19 @@ public class CountBackServiceImpl implements CountBackService {
     public int[] getMonthlyBoardCounts() {
         int[] monthlyCounts = new int[12];
         List<Object[]> results = boardRepository.countBoardsGroupedByMonth();
+
+        for (Object[] row : results) {
+            Integer month = (Integer) row[0];
+            Long count = (Long) row[1];
+            monthlyCounts[month - 1] = count.intValue();
+        }
+
+        return monthlyCounts;
+    }
+
+    public int[] getMonthlyStoryCounts() {
+        int[] monthlyCounts = new int[12];
+        List<Object[]> results = storyLogRepository.countStoriesGroupedByMonth();
 
         for (Object[] row : results) {
             Integer month = (Integer) row[0];
