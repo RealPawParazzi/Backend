@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import pawparazzi.back.member.entity.Member;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,13 +33,16 @@ public class MemberListWrapperResponse {
         private String email;
         private String nickName;
         private String name;
+        private String createdAt;
 
         public static MemberListItem from(Member member) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
             return new MemberListItem(
                     member.getId(),
                     member.getEmail(),
                     member.getNickName(),
-                    member.getName()
+                    member.getName(),
+                    member.getCreatedAt().format(formatter)
             );
         }
     }

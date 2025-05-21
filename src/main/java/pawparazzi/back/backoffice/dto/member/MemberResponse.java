@@ -1,5 +1,7 @@
 package pawparazzi.back.backoffice.dto.member;
 
+import java.time.LocalDateTime;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,6 +17,8 @@ public class MemberResponse {
     private String nickName;
     private String name;
     private String profileImageUrl;
+    private LocalDateTime createdAt;
+
 
     public static MemberResponse from(Member member) {
         return new MemberResponse(
@@ -22,7 +26,8 @@ public class MemberResponse {
                 member.getEmail(),
                 member.getNickName(),
                 member.getName(),
-                member.getProfileImageUrl()
+                member.getProfileImageUrl(),
+                member.getCreatedAt()
         );
     }
 }
