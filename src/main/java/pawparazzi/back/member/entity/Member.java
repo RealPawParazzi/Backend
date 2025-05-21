@@ -1,6 +1,7 @@
 package pawparazzi.back.member.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
@@ -10,6 +11,7 @@ import pawparazzi.back.follow.entity.Follow;
 import pawparazzi.back.pet.entity.Pet;
 import pawparazzi.back.place.entity.Place;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,7 +43,8 @@ public class Member {
     private String profileImageUrl;
 
     @Column(name = "created_at", updatable = false)
-    private java.time.LocalDateTime createdAt;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss.SS")
+    private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {

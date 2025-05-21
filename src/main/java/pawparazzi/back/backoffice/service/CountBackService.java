@@ -7,4 +7,5 @@ public interface CountBackService {
     long countStories();
     int[] getMonthlyUserCounts();
     int[] getMonthlyBoardCounts();
+    int[] getMonthlyStoryCounts();
 }
