@@ -47,7 +47,13 @@ public class NaverAuthService {
         try {
             ResponseEntity<String> response = restTemplate.exchange(TOKEN_URL, HttpMethod.POST, entity, String.class);
             JsonNode json = objectMapper.readTree(response.getBody());
-            return json.get("access_token").asText();
+            if (!json.has("access_token")) {
+                log.error("access_token 없음. 전체 응답: {}", response.getBody());
+                throw new IllegalStateException("access_token 없음");
+            }
+            String accessToken = json.get("access_token").asText();
+            log.info("네이버 access_token 수신 완료: {}", accessToken);
+            return accessToken;
         } catch (Exception e) {
             log.error("네이버 액세스 토큰 요청 실패", e);
             throw new IllegalStateException("네이버 액세스 토큰 요청 실패");
