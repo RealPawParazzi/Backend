@@ -29,7 +29,7 @@ public class VideoRequestController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<VideoResponseDto> createVideoRequest(
             @RequestPart(value = "request") String requestJson,
-            @RequestPart(value = "image") List<MultipartFile> imageFiles,
+            @RequestPart(value = "images") List<MultipartFile> imageFiles, // 여러 이미지 처리
             @RequestHeader("Authorization") String token) throws IOException {
 
         // JSON 문자열을 객체로 수동 변환
@@ -37,7 +37,6 @@ public class VideoRequestController {
         VideoRequestDto requestDto;
         try {
             requestDto = objectMapper.readValue(requestJson, VideoRequestDto.class);
-
         } catch (JsonProcessingException e) {
             return ResponseEntity.badRequest().body(
                     VideoResponseDto.builder()
@@ -56,7 +55,28 @@ public class VideoRequestController {
 
         CompletableFuture<VideoResponseDto> responseFuture = videoRequestService.createVideoRequest(
                 requestDto,
-                imageFiles,
+                imageFiles, // 여러 이미지 전달
+                userId
+        );
+
+        VideoResponseDto response = responseFuture.join();
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{battleId}")
+    public ResponseEntity<VideoResponseDto> createBattleVideoRequest(
+            @PathVariable Long battleId,
+            @RequestHeader("Authorization") String token) throws IOException {
+
+        Long userId;
+        try {
+            userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        CompletableFuture<VideoResponseDto> responseFuture = videoRequestService.createVideoRequestFromBattle(
+                battleId,
                 userId
         );
 
