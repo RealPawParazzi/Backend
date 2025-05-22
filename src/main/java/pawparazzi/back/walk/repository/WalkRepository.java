@@ -23,4 +23,6 @@ public interface WalkRepository extends JpaRepository<Walk, Long> {
         // Add this method to WalkRepository interface
         @Query("SELECT w FROM Walk w WHERE w.pet.petId = :petId AND FUNCTION('DATE', w.startTime) = FUNCTION('DATE', :date) ORDER BY w.startTime DESC")
         List<Walk> findByPetIdAndDate(@Param("petId") Long petId, @Param("date") LocalDateTime date);
+
+        List<Walk> findAllByMemberIdOrderByStartTimeDesc(Long memberId);
 }
