@@ -54,7 +54,7 @@ public class BoardService {
     @Transactional
     public BoardDetailDto createBoard(String userDataJson, Long userId,
                                       MultipartFile titleImageFile, List<MultipartFile> mediaFiles,
-                                      String titleContent) {
+                                      String titleContent, String tag) {
 
         // 1. JSON 파싱
         BoardCreateRequestDto requestDto;
@@ -79,7 +79,7 @@ public class BoardService {
         boardDocument = boardMongoRepository.save(boardDocument);
 
         // 4. MySQL 저장
-        Board board = new Board(member, boardDocument.getId(), requestDto.getVisibility());
+        Board board = new Board(member, boardDocument.getId(), requestDto.getVisibility(), tag);
         boardRepository.save(board);
 
         // 5. S3 비동기 업로드
@@ -164,7 +164,7 @@ public class BoardService {
     @Transactional
     public CompletableFuture<BoardDetailDto> updateBoard(Long boardId, Long userId,
                                                          String userDataJson, List<MultipartFile> mediaFiles,
-                                                         MultipartFile titleImageFile, String titleContent) {
+                                                         MultipartFile titleImageFile, String titleContent, String tag) {
 
         // 1. JSON 파싱
         BoardUpdateRequestDto requestDto;
@@ -237,6 +237,7 @@ public class BoardService {
                     if (requestDto.getVisibility() != null) {
                         board.setVisibility(requestDto.getVisibility());
                     }
+                    board.setTag(tag);
                     boardRepository.save(board);
 
                     return convertToBoardDetailDto(board, boardDocument);
@@ -279,6 +280,7 @@ public class BoardService {
         dto.setCommentCount(board.getCommentCount());
         dto.setViewCount(board.getViewCount());
         dto.setVisibility(board.getVisibility());
+        dto.setTag(board.getTag());
 
         BoardDocument boardDocument = boardMongoRepository.findByMysqlId(board.getId())
                 .orElse(null);
@@ -333,6 +335,7 @@ public class BoardService {
         dto.setCommentCount(board.getCommentCount());
         dto.setViewCount(board.getViewCount());
         dto.setVisibility(board.getVisibility());
+        dto.setTag(board.getTag());
 
         if (board.getAuthor() != null) {
             BoardDetailDto.AuthorDto authorDto = new BoardDetailDto.AuthorDto();

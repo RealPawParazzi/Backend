@@ -18,6 +18,7 @@ public class BoardDetailDto {
     private BoardVisibility visibility;
     private String titleImage;
     private String titleContent;
+    private String tag;
     private LocalDateTime writeDatetime;
     private int favoriteCount;
     private int commentCount;

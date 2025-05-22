@@ -28,6 +28,8 @@ public class BoardUpdateRequestDto {
 
     private List<String> deleteMediaUrls;
 
+    private String tag;
+
 
     @Getter
     @Setter
