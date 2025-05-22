@@ -35,6 +35,8 @@ public class Battle {
 
     private String battleResult;
 
+    private String runwayPrompt;
+
     private String battleDate;
 
     public void connectWithPets(Pet pet1, Pet pet2){
