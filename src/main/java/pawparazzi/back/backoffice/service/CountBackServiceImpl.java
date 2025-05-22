@@ -73,4 +73,18 @@ public class CountBackServiceImpl implements CountBackService {
         return monthlyCounts;
     }
 
+    public int[] getMonthlyPetCounts() {
+        int[] monthlyCounts = new int[12];
+        List<Object[]> results = petRepository.countPetsGroupedByMonth();
+
+        for (Object[] row : results) {
+            Integer month = (Integer) row[0];
+            Long count = (Long) row[1];
+            monthlyCounts[month - 1] = count.intValue();
+        }
+
+        return monthlyCounts;
+    }
+
+
 }
