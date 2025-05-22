@@ -12,6 +12,7 @@ import pawparazzi.back.S3.S3UploadUtil;
 import pawparazzi.back.S3.service.S3AsyncService;
 import pawparazzi.back.member.entity.Member;
 import pawparazzi.back.member.repository.MemberRepository;
+import pawparazzi.back.pet.dto.PetRankingResponseDto;
 import pawparazzi.back.pet.dto.PetRegisterRequestDto;
 import pawparazzi.back.pet.dto.PetResponseDto;
 import pawparazzi.back.pet.dto.PetUpdateDto;
@@ -40,12 +41,8 @@ public class PetService {
     private final S3AsyncService s3AsyncService;
     private final RestTemplate restTemplate; // LLM 호출을 위한 RestTemplate
 
-
-    @Value("${ai.server.url}")
-    private String aiServerUrl;
-
     /**
-     * 반려동물 등록
+     * 반려동물 등록 - 비동기
      */
     @Transactional
     public CompletableFuture<PetResponseDto> registerPet(Long userId, PetRegisterRequestDto registerDto, MultipartFile petImage) {
@@ -59,11 +56,38 @@ public class PetService {
         CompletableFuture<String> petImageUrlFuture = s3UploadUtil.uploadImageAsync(petImage, pathPrefix, defaultImageUrl);
 
         return petImageUrlFuture.thenApply(petImageUrl -> {
-            Pet pet = new Pet(registerDto.getName(), registerDto.getType(), registerDto.getBirthDate(), petImageUrl, member);
+            Pet pet = new Pet(registerDto.getName(), registerDto.getType(), registerDto.getPetDetail(), registerDto.getBirthDate(), petImageUrl, member);
             member.addPet(pet); // Member에 반려동물 추가
             petRepository.save(pet);
             return new PetResponseDto(pet);
         });
+    }
+
+    /**
+     * 반려동물 등록 - 동기
+     */
+    @Transactional
+    public PetResponseDto registerPetSync(Long userId, PetRegisterRequestDto registerDto, MultipartFile petImage) {
+        Member member = memberRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        String pathPrefix = "pet_images/" + member.getNickName();
+        String defaultImageUrl = "https://default-image-url.com/default-pet.png";
+
+        // S3 업로드를 동기로 처리 (또는 기본 이미지 사용)
+        String petImageUrl;
+        try {
+            petImageUrl = s3UploadUtil.uploadImageSync(petImage, pathPrefix, defaultImageUrl); // 동기 메서드 구현
+        } catch (Exception e) {
+            petImageUrl = defaultImageUrl; // 실패시 기본 이미지
+        }
+
+        Pet pet = new Pet(registerDto.getName(), registerDto.getType(), registerDto.getPetDetail(),
+                registerDto.getBirthDate(), petImageUrl, member);
+        member.addPet(pet);
+        Pet savedPet = petRepository.saveAndFlush(pet);
+
+        return new PetResponseDto(savedPet);
     }
 
     /**
@@ -170,48 +194,6 @@ public class PetService {
         return CompletableFuture.completedFuture(null);
     }
 
-    /**
-     * LLM 모델을 호출하여 배틀 결과 생성
-     */
-    public String invokeLLMForBattle(Long myPetId, Long targetPetId, Long userId) {
-        Pet myPet = petRepository.findById(myPetId)
-                .orElseThrow(() -> new EntityNotFoundException("내 반려동물을 찾을 수 없습니다."));
-
-        if (!myPet.getMember().getId().equals(userId)) {
-            throw new IllegalArgumentException("해당 반려동물로 배틀할 권한이 없습니다.");
-        }
-
-        Pet targetPet = petRepository.findById(targetPetId)
-                .orElseThrow(() -> new EntityNotFoundException("상대 반려동물을 찾을 수 없습니다."));
-
-        // LLM 호출을 위한 요청 데이터 구성
-        String llmApiUrl = aiServerUrl + "/api/battle"; // LLM 서비스 URL
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("myPetName", myPet.getName());
-        requestBody.put("targetPetName", targetPet.getName());
-        requestBody.put("myPetDetail", myPet.getPetDetail());
-        requestBody.put("targetPetDetail", targetPet.getPetDetail());
-
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-
-        try {
-            // AI 서버에 POST 요청
-            ResponseEntity<String> response = restTemplate.postForEntity(llmApiUrl, entity, String.class);
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                return response.getBody() != null ? response.getBody() : "배틀 결과를 가져오지 못했습니다.";
-            } else {
-                throw new RuntimeException("LLM 호출 실패: " + response.getStatusCode());
-            }
-        } catch (Exception e) {
-            log.error("LLM 호출 실패: {}", e.getMessage());
-            throw new RuntimeException("LLM 호출 중 오류가 발생했습니다.");
-        }
-    }
-
     @Transactional
     public void battleCountUpdate(Long myPetId, Long targetPetId, String winner) {
         try {
@@ -233,6 +215,18 @@ public class PetService {
         } catch (Exception e) {
             throw new RuntimeException("배틀 카운트 업데이트 실패: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 반려동물 배틀 기록 조회 (승리 순 정렬)
+     */
+    @Transactional(readOnly = true)
+    public List<PetRankingResponseDto> getPetsByBattleRank() {
+
+        return petRepository.findAll().stream()
+                .sorted((p1, p2) -> Integer.compare(p2.getWinCount(), p1.getWinCount())) // 승리 순 정렬
+                .map(PetRankingResponseDto::new)
+                .collect(Collectors.toList());
     }
 
     private String extractFileName(String imageUrl) {

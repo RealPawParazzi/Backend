@@ -20,7 +20,6 @@ public class PetRegisterRequestDto {
     @NotNull
     private Type type;
 
-    @NotNull
     private LocalDate birthDate;
 
     @Size(max = 100)

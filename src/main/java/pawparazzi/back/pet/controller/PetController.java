@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import pawparazzi.back.battle.service.BattleService;
+import pawparazzi.back.pet.dto.PetRankingResponseDto;
 import pawparazzi.back.pet.dto.PetRegisterRequestDto;
 import pawparazzi.back.pet.dto.PetResponseDto;
 import pawparazzi.back.pet.dto.PetUpdateDto;
@@ -29,7 +30,6 @@ import java.util.concurrent.CompletableFuture;
 public class PetController {
 
     private final PetService petService;
-    private final BattleService battleService;
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
 
@@ -139,14 +139,10 @@ public class PetController {
     }
 
     /**
-     * 포켓몬 배틀마냥 배틀
+     * 반려동물 배틀 기록 조회 (승리 순 정렬)
      */
-    @PostMapping("/battle/{targetPetId}")
-    public ResponseEntity<String> battle(
-            @PathVariable Long targetPetId,
-            @RequestParam Long myPetId,
-            @RequestHeader("Authorization") String token) {
-
+    @GetMapping("/rank")
+    public ResponseEntity<List<PetRankingResponseDto>> getPetsByBattleRank(@RequestHeader("Authorization") String token) {
         Long userId;
         try {
             userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
@@ -154,33 +150,8 @@ public class PetController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-
-            String battleResult = petService.invokeLLMForBattle(myPetId, targetPetId, userId);
-            JsonNode rootNode = objectMapper.readTree(battleResult);
-            JsonNode winnerNode = rootNode.get("winner");
-
-            if (winnerNode == null || winnerNode.asText().isBlank()){
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("배틀 결과에 승자 정보가 없습니다.");
-            }
-
-            Pet pet1 = petService.getPetEntityById(myPetId);
-            Pet pet2 = petService.getPetEntityById(targetPetId);
-            String winner = winnerNode.asText().replace("\"", "");
-            petService.battleCountUpdate(myPetId, targetPetId, winner);
-            battleService.createBattle(pet1, pet2, battleResult, winner);
-
-            return ResponseEntity.ok(battleResult);
-        } catch (IllegalArgumentException e){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("해당 반려동물을 찾을 수 없습니다.");
-        } catch (JsonProcessingException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("배틀 결과를 처리하는 중 JSON 파싱 오류가 발생했습니다.");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("배틀 중 오류가 발생했습니다.");
-        }
+        List<PetRankingResponseDto> rankedPets = petService.getPetsByBattleRank();
+        return ResponseEntity.ok(rankedPets);
     }
 
 }
