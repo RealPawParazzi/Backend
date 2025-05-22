@@ -12,6 +12,7 @@ import java.util.List;
 @Data
 public class WalkResponseDto {
     private Long id;
+    private Long memberId;
     private PetDto pet;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
@@ -39,8 +40,9 @@ public class WalkResponseDto {
         }
     }
 
-    public WalkResponseDto(Long id, Pet pet, LocalDateTime startTime, LocalDateTime  endTime, List<LocationPointDto> route, Double distance, Double averageSpeed) {
+    public WalkResponseDto(Long id, Long memberId, Pet pet, LocalDateTime startTime, LocalDateTime endTime, List<LocationPointDto> route, Double distance, Double averageSpeed) {
         this.id = id;
+        this.memberId = memberId;
         this.pet = new PetDto(pet);
         this.startTime = startTime;
         this.endTime = endTime;

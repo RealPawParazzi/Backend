@@ -36,6 +36,7 @@ public class WalkService {
 
         Walk walk = walkMapper.toEntity(requestDto);
         walk.setPet(pet);
+        walk.setMember(pet.getMember());
 
         Walk savedWalk = walkRepository.save(walk);
         return walkMapper.toDto(savedWalk);

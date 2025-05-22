@@ -44,6 +44,7 @@ public class WalkMapper {
     public WalkResponseDto toDto(Walk walk) {
         return new WalkResponseDto(
                 walk.getId(),
+                walk.getMember().getId(),
                 walk.getPet(),
                 walk.getStartTime(),
                 walk.getEndTime(),
