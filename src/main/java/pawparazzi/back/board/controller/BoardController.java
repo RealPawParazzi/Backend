@@ -27,13 +27,14 @@ public class BoardController {
     public ResponseEntity<BoardDetailDto> createBoard(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestPart("userData") String userDataJson,
+            @RequestPart(value = "tag", required = false) String tag,
             @RequestPart(value = "mediaFiles", required = false) List<MultipartFile> mediaFiles,
             @RequestPart(value = "titleImage", required = false) MultipartFile titleImageFile,
             @RequestPart(value = "titleContent", required = false) String titleContent) {
 
         Long memberId = userDetails.getId();
 
-        BoardDetailDto response = boardService.createBoard(userDataJson, memberId, titleImageFile, mediaFiles, titleContent);
+        BoardDetailDto response = boardService.createBoard(userDataJson, memberId, titleImageFile, mediaFiles, titleContent, tag);
         return ResponseEntity.ok(response);
     }
 
@@ -65,11 +66,12 @@ public class BoardController {
             @RequestPart("userData") String userDataJson,
             @RequestPart(value = "mediaFiles", required = false) List<MultipartFile> mediaFiles,
             @RequestPart(value = "titleImage", required = false) MultipartFile titleImageFile,
-            @RequestPart(value = "titleContent", required = false) String titleContent) {
+            @RequestPart(value = "titleContent", required = false) String titleContent,
+            @RequestPart(value = "tag", required = false) String tag) {
 
         Long memberId = userDetails.getId();
 
-        BoardDetailDto updatedBoard = boardService.updateBoard(boardId, memberId, userDataJson, mediaFiles, titleImageFile, titleContent).join();
+        BoardDetailDto updatedBoard = boardService.updateBoard(boardId, memberId, userDataJson, mediaFiles, titleImageFile, titleContent, tag).join();
         return ResponseEntity.ok(updatedBoard);
     }
 

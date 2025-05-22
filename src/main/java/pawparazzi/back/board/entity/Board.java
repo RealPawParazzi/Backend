@@ -7,6 +7,8 @@ import lombok.Setter;
 import pawparazzi.back.member.entity.Member;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.ArrayList;
 
 @Entity
 @Getter
@@ -39,7 +41,9 @@ public class Board {
     private int viewCount = 0;
 
     @Column(nullable = false)
-    private LocalDateTime writeDatetime = LocalDateTime.now().withNano(0);;
+    private LocalDateTime writeDatetime = LocalDateTime.now().withNano(0);
+
+    private String tag;
 
     public void increaseFavoriteCount() {
         this.favoriteCount++;
@@ -69,9 +73,10 @@ public class Board {
         return (author != null) ? author.getId() : null;
     }
 
-    public Board(Member author, String mongoId, BoardVisibility visibility) {
+    public Board(Member author, String mongoId, BoardVisibility visibility, String tag) {
         this.author = author;
         this.mongoId = mongoId;
         this.visibility = visibility != null ? visibility : BoardVisibility.PUBLIC;
+        this.tag = tag;
     }
 }
