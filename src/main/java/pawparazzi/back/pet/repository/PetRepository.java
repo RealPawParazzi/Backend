@@ -16,4 +16,7 @@ public interface PetRepository extends JpaRepository<Pet, Long> {
 
     @Query("SELECT p FROM Pet p JOIN FETCH p.member WHERE p.member.id = :userId")
     List<Pet> findPetsWithMemberByUserId(Long userId);
+
+    @Query("SELECT MONTH(p.createdAt), COUNT(p) FROM Pet p GROUP BY MONTH(p.createdAt)")
+    List<Object[]> countPetsGroupedByMonth();
 }

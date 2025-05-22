@@ -41,6 +41,14 @@ public class Pet {
     @Column(length = 100)
     private String petDetail;
 
+    @Column(updatable = false)
+    private LocalDate createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDate.now();
+    }
+
     @OneToMany(mappedBy = "pet1", cascade = CascadeType.ALL)
     private List<Battle> battleAsPet1 = new ArrayList<>();
 

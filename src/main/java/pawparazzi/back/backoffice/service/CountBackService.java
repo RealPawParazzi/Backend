@@ -8,4 +8,5 @@ public interface CountBackService {
     int[] getMonthlyUserCounts();
     int[] getMonthlyBoardCounts();
     int[] getMonthlyStoryCounts();
+    int[] getMonthlyPetCounts();
 }

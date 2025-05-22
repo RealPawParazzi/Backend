@@ -60,4 +60,9 @@ public class CountBackController {
         return Map.of("data", monthlyCounts);
     }
 
+    @GetMapping("/pet/monthly")
+    public Map<String, int[]> getMonthlyPetStats() {
+        int[] monthlyCounts = countBackService.getMonthlyPetCounts();
+        return Map.of("data", monthlyCounts);
+    }
 }
