@@ -1,8 +1,8 @@
 package pawparazzi.back.pet.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import io.netty.handler.codec.Headers;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import pawparazzi.back.battle.entity.Battle;
 import pawparazzi.back.member.entity.Member;
@@ -29,7 +29,7 @@ public class Pet {
     @Enumerated(EnumType.STRING)
     private Type type;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private LocalDate birthDate;
 
     private String petImg;
@@ -41,10 +41,10 @@ public class Pet {
     @Column(length = 100)
     private String petDetail;
 
-    @OneToMany(mappedBy = "pet", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "pet1", cascade = CascadeType.ALL)
     private List<Battle> battleAsPet1 = new ArrayList<>();
 
-    @OneToMany(mappedBy = "pet", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "pet2", cascade = CascadeType.ALL)
     private List<Battle> battleAsPet2 = new ArrayList<>();
 
     @JsonIgnore
@@ -59,10 +59,11 @@ public class Pet {
         }
     }
 
-    public Pet(String name, Type type, LocalDate birthDate, String petImg, Member member) {
+    public Pet(String name, Type type, @Size(max = 100) String petDetail, LocalDate birthDate, String petImg, Member member) {
         this.name = name;
         this.type = type;
         this.birthDate = birthDate;
+        this.petDetail = petDetail;
         this.petImg = petImg;
         this.member = member;
     }

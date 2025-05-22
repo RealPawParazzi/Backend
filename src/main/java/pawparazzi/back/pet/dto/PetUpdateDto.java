@@ -20,7 +20,6 @@ public class PetUpdateDto {
     @NotNull
     private Type type;
 
-    @NotNull
     private LocalDate birthDate;
 
     private String petImg;

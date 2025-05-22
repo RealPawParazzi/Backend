@@ -32,4 +32,22 @@ public class S3UploadUtil {
             return failedFuture;
         }
     }
+
+    // 동기 업로드 메서드 추가
+    public String uploadImageSync(MultipartFile file, String pathPrefix, String defaultImageUrl) {
+        if (file == null || file.isEmpty()) {
+            return defaultImageUrl;
+        }
+
+        try {
+            String fileName = pathPrefix + "_" + System.currentTimeMillis();
+            // 비동기 메서드를 동기적으로 처리
+            return s3AsyncService.uploadFile(fileName, file.getBytes(), file.getContentType()).get();
+        } catch (IOException e) {
+            throw new RuntimeException("파일 업로드 실패: " + e.getMessage(), e);
+        } catch (Exception e) {
+            // ExecutionException, InterruptedException 등 처리
+            throw new RuntimeException("파일 업로드 중 오류 발생: " + e.getMessage(), e);
+        }
+    }
 }
