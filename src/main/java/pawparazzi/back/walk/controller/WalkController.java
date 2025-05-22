@@ -121,4 +121,17 @@ public class WalkController {
             return ResponseEntity.notFound().build();
         }
     }
+
+    // 사용자별 전체 산책 기록 조회
+    @GetMapping("/my")
+    public ResponseEntity<List<WalkResponseDto>> getWalksByUser(
+            @RequestHeader("Authorization") String token) {
+        try {
+            Long userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+            List<WalkResponseDto> walks = walkService.getWalksByUserId(userId);
+            return ResponseEntity.ok(walks);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
 }

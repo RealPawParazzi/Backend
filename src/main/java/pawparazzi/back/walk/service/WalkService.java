@@ -36,6 +36,7 @@ public class WalkService {
 
         Walk walk = walkMapper.toEntity(requestDto);
         walk.setPet(pet);
+        walk.setMember(pet.getMember());
 
         Walk savedWalk = walkRepository.save(walk);
         return walkMapper.toDto(savedWalk);
@@ -110,4 +111,13 @@ public class WalkService {
                 .map(walkMapper::toDto)
                 .collect(Collectors.toList());
     }
+
+    @Transactional(readOnly = true)
+    public List<WalkResponseDto> getWalksByUserId(Long userId) {
+        List<Walk> walks = walkRepository.findAllByMemberIdOrderByStartTimeDesc(userId);
+        return walks.stream()
+                .map(walkMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
 }
