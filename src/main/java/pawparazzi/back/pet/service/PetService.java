@@ -94,6 +94,12 @@ public class PetService {
         return new PetResponseDto(pet);
     }
 
+    @Transactional(readOnly = true)
+    public Pet getPetEntityById(Long petId) {
+        return petRepository.findById(petId)
+                .orElseThrow(() -> new EntityNotFoundException("반려동물을 찾을 수 없습니다."));
+    }
+
     /**
      * 반려동물 정보 수정
      */

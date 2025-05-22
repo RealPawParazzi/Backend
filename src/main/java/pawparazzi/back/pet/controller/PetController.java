@@ -11,9 +11,11 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import pawparazzi.back.battle.service.BattleService;
 import pawparazzi.back.pet.dto.PetRegisterRequestDto;
 import pawparazzi.back.pet.dto.PetResponseDto;
 import pawparazzi.back.pet.dto.PetUpdateDto;
+import pawparazzi.back.pet.entity.Pet;
 import pawparazzi.back.pet.service.PetService;
 import pawparazzi.back.security.util.JwtUtil;
 
@@ -27,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 public class PetController {
 
     private final PetService petService;
+    private final BattleService battleService;
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
 
@@ -162,8 +165,11 @@ public class PetController {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("배틀 결과에 승자 정보가 없습니다.");
             }
 
+            Pet pet1 = petService.getPetEntityById(myPetId);
+            Pet pet2 = petService.getPetEntityById(targetPetId);
             String winner = winnerNode.asText().replace("\"", "");
             petService.battleCountUpdate(myPetId, targetPetId, winner);
+            battleService.createBattle(pet1, pet2, battleResult, winner);
 
             return ResponseEntity.ok(battleResult);
         } catch (IllegalArgumentException e){
