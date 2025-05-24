@@ -37,7 +37,7 @@ public class PetController {
      * 반려동물 등록
      */
     @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public CompletableFuture<ResponseEntity<PetResponseDto>> registerPet(
+    public ResponseEntity<PetResponseDto> registerPet(
             @RequestHeader("Authorization") String token,
             @RequestPart("petData") String petDataJson,
             @RequestPart(value = "petImage", required = false) MultipartFile petImage) {
@@ -46,18 +46,27 @@ public class PetController {
         try {
             userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
         } catch (JwtException e) {
-            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         PetRegisterRequestDto registerDto;
         try {
+            System.out.println("[DEBUG] petDataJson: " + petDataJson);
             registerDto = objectMapper.readValue(petDataJson, PetRegisterRequestDto.class);
+            System.out.println("[DEBUG] Parsed registerDto: " + registerDto);
         } catch (JsonProcessingException e) {
-            return CompletableFuture.completedFuture(ResponseEntity.badRequest().build());
+            System.out.println("[ERROR] JSON 파싱 실패: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
         }
 
-        return petService.registerPet(userId, registerDto, petImage)
-                .thenApply(ResponseEntity::ok);
+        try {
+            PetResponseDto response = petService.registerPetSync(userId, registerDto, petImage);
+            System.out.println("[DEBUG] Pet 등록 성공: " + response);
+            return ResponseEntity.ok(response);
+        } catch (Exception ex) {
+            System.out.println("[ERROR] Pet 등록 중 예외: " + ex.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     /**
