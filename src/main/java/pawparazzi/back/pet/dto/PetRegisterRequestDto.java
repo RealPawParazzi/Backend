@@ -24,6 +24,7 @@ public class PetRegisterRequestDto {
     private LocalDate birthDate;
 
     @Size(max = 100)
+    @NotNull
     private String petDetail;
 
 }
