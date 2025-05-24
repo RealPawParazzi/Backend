@@ -4,7 +4,6 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -19,6 +18,7 @@ import pawparazzi.back.pet.entity.Pet;
 import pawparazzi.back.pet.repository.PetRepository;
 import pawparazzi.back.pet.service.PetService;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -48,16 +48,17 @@ public class BattleService {
         String pet1Name = pet1.getName();
 
         if (Objects.equals(winner, pet1Name)) {
-            makeBattle(pet1, pet2, battleResult, runwayPrompt, pet1Id, pet2Id);
+            makeBattle(pet1, pet2, battleResult, runwayPrompt, LocalDateTime.now(), pet1Id, pet2Id);
         } else {
-            makeBattle(pet1, pet2, battleResult, runwayPrompt, pet2Id, pet1Id);
+            makeBattle(pet1, pet2, battleResult, runwayPrompt, LocalDateTime.now(), pet2Id, pet1Id);
         }
     }
 
-    private void makeBattle(Pet pet1, Pet pet2, String battleResult, String runwayPrompt, Long winnerId, Long loserId) {
+    private void makeBattle(Pet pet1, Pet pet2, String battleResult, String runwayPrompt, LocalDateTime battleDate, Long winnerId, Long loserId) {
         Battle battle = new Battle();
         battle.setPet1(pet1);
         battle.setPet2(pet2);
+        battle.setBattleDate(battleDate);
         battle.setWinnerId(winnerId);
         battle.setLoserId(loserId);
         battle.setBattleResult(battleResult);
