@@ -29,7 +29,7 @@ public class Pet {
     @Enumerated(EnumType.STRING)
     private Type type;
 
-    @Column(nullable = true)
+    @Column(nullable = false)
     private LocalDate birthDate;
 
     private String petImg;
