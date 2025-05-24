@@ -38,7 +38,7 @@ public class Pet {
 
     private Integer loseCount = 0;
 
-    @Column(length = 100)
+    @Column(nullable = false, length = 100)
     private String petDetail;
 
     @Column(updatable = false)
