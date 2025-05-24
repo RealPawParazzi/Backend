@@ -11,4 +11,8 @@ import java.util.Optional;
 public interface VideoRequestRepository extends JpaRepository<VideoRequest, Long> {
     List<VideoRequest> findByUserId(Long userId);
     Optional<VideoRequest> findByJobId(String jobId);
+
+    List<VideoRequest> findAllByUserId(Long userId);
+
+    List<VideoRequest> findAllByWinnerId(Long petId);
 }
