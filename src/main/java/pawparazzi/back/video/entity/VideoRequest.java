@@ -25,8 +25,8 @@ public class VideoRequest {
     @Column(name = "image_url")
     private String imageUrl;
 
-    @Column(name = "thumbnail")
-    private String thumbnail;
+    @Column(name = "winner_id")
+    private Long winnerId;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;

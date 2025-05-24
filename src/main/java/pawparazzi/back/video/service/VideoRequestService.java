@@ -4,23 +4,21 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import pawparazzi.back.S3.S3UploadUtil;
 import pawparazzi.back.battle.dto.BattleResponseDto;
 import pawparazzi.back.battle.entity.Battle;
 import pawparazzi.back.battle.service.BattleService;
+import pawparazzi.back.pet.entity.Pet;
+import pawparazzi.back.pet.service.PetService;
 import pawparazzi.back.video.dto.VideoRequestDto;
 import pawparazzi.back.video.dto.VideoResponseDto;
+import pawparazzi.back.video.dto.VideoResponseViewDto;
 import pawparazzi.back.video.entity.VideoRequest;
 import pawparazzi.back.video.repository.VideoRequestRepository;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -30,6 +28,7 @@ public class VideoRequestService {
 
     private final VideoRequestRepository videoRequestRepository;
     private final BattleService battleService;
+    private final PetService petService;
     private final S3UploadUtil s3UploadUtil;
 
     @Value("${ai.server.url}")
@@ -122,6 +121,7 @@ public class VideoRequestService {
 
         // 배틀 결과 가져오기
         BattleResponseDto battle = battleService.getBattleById(battleId);
+        Long winnerId = battle.getWinnerId();
         String pet1Img = battle.getPet1().getPetImg();
         String pet2Img = battle.getPet2().getPetImg();
         List<String> imageUrls = List.of(pet1Img, pet2Img);
@@ -132,6 +132,8 @@ public class VideoRequestService {
                 .imageUrl(String.join(",", imageUrls)) // 여러 이미지 URL을 콤마로 연결
                 .userId(userId)
                 .jobId(jobId)
+                .winnerId(winnerId)
+                .duration(10)
                 .build();
 
         // DB에 저장
@@ -146,7 +148,7 @@ public class VideoRequestService {
         requestBody.put("jobId", jobId);
         requestBody.put("prompt", optimizedPromptForVideo(battle.getBattleResult(), battle));
         requestBody.put("imageUrls", imageUrls); // 여러 이미지 URL 전달
-        requestBody.put("duration", 5); // 기본값으로 설정
+        requestBody.put("duration", videoRequest.getDuration());
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
@@ -229,6 +231,47 @@ public class VideoRequestService {
                 .status(videoRequest.getStatus())
                 .duration(videoRequest.getDuration())
                 .resultUrl(videoRequest.getResultUrl())
+                .build();
+    }
+
+    public List<VideoResponseViewDto> getAllVideoRequests(Long userId) {
+        List<VideoRequest> videoRequests = videoRequestRepository.findAllByUserId(userId);
+        return videoRequests.stream()
+                .map(videoRequest -> VideoResponseViewDto.builder()
+                        .requestId(videoRequest.getId())
+                        .prompt(videoRequest.getPrompt())
+                        .imageUrl(videoRequest.getImageUrl())
+                        .resultUrl(videoRequest.getResultUrl())
+                        .createdAt(videoRequest.getCreatedAt())
+                        .updatedAt(videoRequest.getUpdatedAt())
+                        .build()
+                )
+                .collect(Collectors.toList());
+    }
+
+    public VideoResponseViewDto getVideoRequest(Long petId) {
+
+        Pet pet = petService.getPetEntityById(petId);
+        if (pet == null) {
+            throw new RuntimeException("반려동물을 찾을 수 없습니다: " + petId);
+        }
+
+        List<VideoRequest> winBattleVideoRequests = videoRequestRepository.findAllByWinnerId(petId);
+
+        VideoRequest latestWonBattle = winBattleVideoRequests.stream()
+                .filter(videoRequest -> videoRequest.getWinnerId().equals(petId))
+                .max(Comparator.comparing(VideoRequest::getUpdatedAt))
+                .orElse(null);
+
+        if(latestWonBattle == null) {
+            return VideoResponseViewDto.builder()
+                    .resultUrl("최근 승리한 배틀 없음")
+                    .build();
+        }
+
+        return VideoResponseViewDto.builder()
+                .requestId(latestWonBattle.getId())
+                .resultUrl(latestWonBattle.getResultUrl())
                 .build();
     }
 }

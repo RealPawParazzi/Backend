@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import pawparazzi.back.pet.entity.Pet;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @Setter
@@ -37,7 +39,7 @@ public class Battle {
 
     private String runwayPrompt;
 
-    private String battleDate;
+    private LocalDateTime battleDate;
 
     public void connectWithPets(Pet pet1, Pet pet2){
         this.pet1 = pet1;

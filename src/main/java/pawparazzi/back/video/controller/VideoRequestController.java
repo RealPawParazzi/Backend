@@ -3,7 +3,6 @@ package pawparazzi.back.video.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.JwtException;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -13,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import pawparazzi.back.security.util.JwtUtil;
 import pawparazzi.back.video.dto.VideoRequestDto;
 import pawparazzi.back.video.dto.VideoResponseDto;
+import pawparazzi.back.video.dto.VideoResponseViewDto;
 import pawparazzi.back.video.service.VideoRequestService;
 
 import java.io.IOException;
@@ -82,6 +82,35 @@ public class VideoRequestController {
 
         VideoResponseDto response = responseFuture.join();
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{petId}")
+    public ResponseEntity<VideoResponseViewDto> getVideoRequest(
+            @PathVariable Long petId,
+            @RequestHeader("Authorization") String token) {
+        Long userId;
+        try {
+            userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        VideoResponseViewDto videoRequest = videoRequestService.getVideoRequest(petId);
+        return ResponseEntity.ok(videoRequest);
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<List<VideoResponseViewDto>> getAllVideoRequests(
+            @RequestHeader("Authorization") String token) {
+        Long userId;
+        try {
+            userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        List<VideoResponseViewDto> videoRequests = videoRequestService.getAllVideoRequests(userId);
+        return ResponseEntity.ok(videoRequests);
     }
 
     @GetMapping("/status/{jobId}")
