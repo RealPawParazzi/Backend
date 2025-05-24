@@ -29,7 +29,7 @@ public class VideoRequestController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<VideoResponseDto> createVideoRequest(
             @RequestPart(value = "request") String requestJson,
-            @RequestPart(value = "images") List<MultipartFile> imageFiles, // 여러 이미지 처리
+            @RequestPart(value = "image") List<MultipartFile> imageFiles, // 여러 이미지 처리
             @RequestHeader("Authorization") String token) throws IOException {
 
         // JSON 문자열을 객체로 수동 변환
