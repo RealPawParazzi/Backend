@@ -67,7 +67,7 @@ public class Pet {
         }
     }
 
-    public Pet(String name, Type type, @Size(max = 100) String petDetail, LocalDate birthDate, String petImg, Member member) {
+    public Pet(String name, Type type, @Size(max = 100) String petDetail,  LocalDate birthDate, String petImg, Member member) {
         this.name = name;
         this.type = type;
         this.birthDate = birthDate;

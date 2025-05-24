@@ -37,7 +37,7 @@ public class BattleService {
     private String aiServerUrl;
 
     @Transactional
-    public void createBattle(Long pet1Id, Long pet2Id, String battleResult, String runwayPrompt, String winner) {
+    public Long createBattle(Long pet1Id, Long pet2Id, String battleResult, String runwayPrompt, String winner) {
         // 영속성 컨텍스트에서 Pet 엔티티 조회
         Pet pet1 = petRepository.findById(pet1Id)
                 .orElseThrow(() -> new IllegalArgumentException("Pet with id " + pet1Id + " not found"));
@@ -48,13 +48,13 @@ public class BattleService {
         String pet1Name = pet1.getName();
 
         if (Objects.equals(winner, pet1Name)) {
-            makeBattle(pet1, pet2, battleResult, runwayPrompt, LocalDateTime.now(), pet1Id, pet2Id);
+            return makeBattle(pet1, pet2, battleResult, runwayPrompt, LocalDateTime.now(), pet1Id, pet2Id);
         } else {
-            makeBattle(pet1, pet2, battleResult, runwayPrompt, LocalDateTime.now(), pet2Id, pet1Id);
+            return makeBattle(pet1, pet2, battleResult, runwayPrompt, LocalDateTime.now(), pet2Id, pet1Id);
         }
     }
 
-    private void makeBattle(Pet pet1, Pet pet2, String battleResult, String runwayPrompt, LocalDateTime battleDate, Long winnerId, Long loserId) {
+    private Long makeBattle(Pet pet1, Pet pet2, String battleResult, String runwayPrompt, LocalDateTime battleDate, Long winnerId, Long loserId) {
         Battle battle = new Battle();
         battle.setPet1(pet1);
         battle.setPet2(pet2);
@@ -64,6 +64,8 @@ public class BattleService {
         battle.setBattleResult(battleResult);
         battle.setRunwayPrompt(runwayPrompt);
         battleRepository.save(battle);
+
+        return battle.getBattleId();
     }
 
     /**

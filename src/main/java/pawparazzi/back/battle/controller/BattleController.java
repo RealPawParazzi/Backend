@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import pawparazzi.back.battle.dto.BattleResponseDto;
+import pawparazzi.back.battle.dto.BattleResultResponseDto;
 import pawparazzi.back.battle.service.BattleService;
 import pawparazzi.back.member.service.MemberService;
 import pawparazzi.back.pet.dto.PetRegisterRequestDto;
@@ -27,6 +28,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BattleController {
 
+    private final ObjectMapper objectMapper;
     private final BattleService battleService;
     private final PetService petService;
     private final JwtUtil jwtUtil;
@@ -62,7 +64,7 @@ public class BattleController {
     }
 
     @PostMapping("/{targetPetId}")
-    public ResponseEntity<String> battle(
+    public ResponseEntity<?> battle(
             @PathVariable Long targetPetId,
             @RequestParam Long myPetId,
             @RequestHeader("Authorization") String token) {
@@ -101,9 +103,11 @@ public class BattleController {
                     : "배틀 결과를 가져오지 못했습니다.");
 
             petService.battleCountUpdate(myPetId, targetPetId, winner);
-            battleService.createBattle(myPetId, targetPetId, battleResultText, runwayPrompt, winner);
+            Long battleId = battleService.createBattle(myPetId, targetPetId, battleResultText, runwayPrompt, winner);
 
-            return ResponseEntity.ok(fullBattleResult);
+            BattleResultResponseDto responseDto = new BattleResultResponseDto(battleId, winner, battleResultText);
+            return ResponseEntity.ok(responseDto);
+
         } catch (IllegalArgumentException e){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (EntityNotFoundException e) {
@@ -121,7 +125,7 @@ public class BattleController {
      * 시연용 api => 다소 규칙 깨질 수 있음
      */
     @PostMapping("/instance/createTwo")
-    public ResponseEntity<String> createBattleTwoInstance(
+    public ResponseEntity<?> createBattleTwoInstance(
             @RequestPart(value = "petImage1") MultipartFile petImage1,
             @RequestPart(value = "petImage2") MultipartFile petImage2,
             @RequestPart("petData1") String petDataJson1,
@@ -136,10 +140,16 @@ public class BattleController {
         }
 
         try {
-            ObjectMapper objectMapper = new ObjectMapper();
             // PetRegisterRequestDto 파싱
             PetRegisterRequestDto petDto1 = objectMapper.readValue(petDataJson1, PetRegisterRequestDto.class);
             PetRegisterRequestDto petDto2 = objectMapper.readValue(petDataJson2, PetRegisterRequestDto.class);
+
+            if (petDto1.getBirthDate() == null) {
+                petDto1.setBirthDate(java.time.LocalDate.now());
+            }
+            if (petDto2.getBirthDate() == null) {
+                petDto2.setBirthDate(java.time.LocalDate.now());
+            }
 
             // 펫 2개 등록 (동기)
             PetResponseDto pet1 = petService.registerPetSync(userId, petDto1, petImage1);
@@ -171,9 +181,11 @@ public class BattleController {
                     : "배틀 결과를 가져오지 못했습니다.");
 
             petService.battleCountUpdate(pet1.getPetId(), pet2.getPetId(), winner);
-            battleService.createBattle(pet1.getPetId(), pet2.getPetId(), battleResultText, runwayPrompt, winner);
+            Long battleId = battleService.createBattle(pet1.getPetId(), pet2.getPetId(), battleResultText, runwayPrompt, winner);
 
-            return ResponseEntity.ok(fullBattleResult);
+            BattleResultResponseDto responseDto = new BattleResultResponseDto(battleId, winner, battleResultText);
+            return ResponseEntity.ok(responseDto);
+
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("배틀 인스턴스 생성 중 오류: " + e.getMessage());
         }
@@ -187,7 +199,7 @@ public class BattleController {
      */
     @PostMapping("/instance/createOne/{targetPetId}")
     @Transactional
-    public ResponseEntity<String> createBattleOneInstance(
+    public ResponseEntity<?> createBattleOneInstance(
             @PathVariable Long targetPetId,
             @RequestPart(value = "petImage") MultipartFile petImage,
             @RequestPart("petData") String petDataJson,
@@ -201,10 +213,12 @@ public class BattleController {
         }
 
         try {
-            ObjectMapper objectMapper = new ObjectMapper();
 
             // PetRegisterRequestDto 파싱
             PetRegisterRequestDto petDto = objectMapper.readValue(petDataJson, PetRegisterRequestDto.class);
+            if( petDto.getBirthDate() == null) {
+                petDto.setBirthDate(java.time.LocalDate.now());
+            }
             PetResponseDto pet = petService.registerPetSync(userId, petDto, petImage);
 
             // 배틀 실행
@@ -239,9 +253,10 @@ public class BattleController {
                     : "배틀 결과를 가져오지 못했습니다.");
 
             petService.battleCountUpdate(instancePet.getPetId(), targetPetId, winner);
-            battleService.createBattle(pet.getPetId(), targetPetId, battleResultText, runwayPrompt, winner);
+            Long battleId = battleService.createBattle(pet.getPetId(), targetPetId, battleResultText, runwayPrompt, winner);
 
-            return ResponseEntity.ok(fullBattleResult);
+            BattleResultResponseDto responseDto = new BattleResultResponseDto(battleId, winner, battleResultText);
+            return ResponseEntity.ok(responseDto);
 
         } catch (IllegalArgumentException e){
             e.printStackTrace();
