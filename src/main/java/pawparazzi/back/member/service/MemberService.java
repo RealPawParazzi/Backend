@@ -242,7 +242,15 @@ public class MemberService {
                         member.getId(),
                         member.getName(),
                         member.getNickName(),
-                        member.getProfileImageUrl()
+                        member.getProfileImageUrl(),
+                        member.getPets().stream().map(pet -> new MemberResponseDto.PetDto(
+                                pet.getPetId(),
+                                pet.getName(),
+                                pet.getType().name(),
+                                pet.getBirthDate(),
+                                pet.getPetDetail(),
+                                pet.getPetImg()
+                        )).collect(Collectors.toList())
                 ))
                 .collect(Collectors.toList());
     }
