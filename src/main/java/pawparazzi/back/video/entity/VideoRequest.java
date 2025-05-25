@@ -19,7 +19,7 @@ public class VideoRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(length = 10000)
     private String prompt;
 
     @Column(name = "image_url")
