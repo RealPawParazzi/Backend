@@ -133,7 +133,7 @@ public class VideoRequestService {
                 .userId(userId)
                 .jobId(jobId)
                 .winnerId(winnerId)
-                .duration(10)
+                .duration(5)
                 .build();
 
         // DB에 저장
