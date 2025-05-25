@@ -86,7 +86,9 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:8082",
                 "http://192.168.0.10:8081",
-                "http://localhost:5173"
+                "http://localhost:5173",
+                "https://paw-parazzi-backoffice.web.app",
+                "https://pawparazziback.web.app"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
