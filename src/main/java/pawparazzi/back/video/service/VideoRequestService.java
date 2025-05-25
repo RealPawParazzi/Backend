@@ -146,7 +146,7 @@ public class VideoRequestService {
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("jobId", jobId);
-        requestBody.put("prompt", optimizedPromptForVideo(battle.getBattleResult(), battle));
+        requestBody.put("prompt", optimizedPromptForVideo(battle.getRunwayPrompt(), battle));
         requestBody.put("imageUrls", imageUrls); // 여러 이미지 URL 전달
         requestBody.put("duration", videoRequest.getDuration());
 
@@ -183,7 +183,7 @@ public class VideoRequestService {
         );
     }
 
-    private String optimizedPromptForVideo(String battleResult, BattleResponseDto battle) {
+    private String optimizedPromptForVideo(String runwayPrompt, BattleResponseDto battle) {
         // 배틀 결과에 따라 프롬프트 최적화 로직 구현
         StringBuilder optimizedPrompt = new StringBuilder();
 
@@ -193,7 +193,7 @@ public class VideoRequestService {
                 .append(battle.getPet2().getName())
                 .append("의 배틀: ");
 
-        optimizedPrompt.append(battleResult);
+        optimizedPrompt.append(runwayPrompt);
         return optimizedPrompt.toString();
     }
 
