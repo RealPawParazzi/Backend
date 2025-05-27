@@ -32,6 +32,7 @@ public class S3AsyncService {
                 .bucket(bucketName)
                 .key(fileName)
                 .contentType(contentType)
+                .contentDisposition("inline")
                 .build();
 
         return s3AsyncClient.putObject(putObjectRequest, AsyncRequestBody.fromByteBuffer(ByteBuffer.wrap(fileData)))
