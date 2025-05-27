@@ -1,6 +1,5 @@
 package pawparazzi.back.pet.dto;
 
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import pawparazzi.back.pet.entity.Pet;
@@ -27,16 +26,18 @@ public class PetResponseDto {
         this.birthDate = pet.getBirthDate();
         this.petImg = pet.getPetImg();
         this.petDetail = pet.getPetDetail();
-        this.member = new MemberInfo(pet.getMember().getNickName(), pet.getMember().getEmail());
+        this.member = new MemberInfo(pet.getMember().getId(), pet.getMember().getNickName(), pet.getMember().getEmail());
     }
 
     @Getter
     @Setter
     public static class MemberInfo {
+        private Long memberId;
         private String name;
         private String email;
 
-        public MemberInfo(String name, String email) {
+        public MemberInfo(Long memberId, String name, String email) {
+            this.memberId = memberId;
             this.name = name;
             this.email = email;
         }

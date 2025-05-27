@@ -25,18 +25,6 @@ public class PetRankingResponseDto {
         this.birthDate = pet.getBirthDate();
         this.petImg = pet.getPetImg();
         this.winCount = pet.getWinCount();
-        this.member = new PetResponseDto.MemberInfo(pet.getMember().getNickName(), pet.getMember().getEmail());
-    }
-
-    @Getter
-    @Setter
-    public static class MemberInfo {
-        private String name;
-        private String email;
-
-        public MemberInfo(String name, String email) {
-            this.name = name;
-            this.email = email;
-        }
+        this.member = new PetResponseDto.MemberInfo(pet.getMember().getId(), pet.getMember().getNickName(), pet.getMember().getEmail());
     }
 }
