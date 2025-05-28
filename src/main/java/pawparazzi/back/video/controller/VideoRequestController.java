@@ -9,7 +9,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import pawparazzi.back.battle.entity.Battle;
 import pawparazzi.back.security.util.JwtUtil;
+import pawparazzi.back.video.dto.BattleVideoResponseDto;
 import pawparazzi.back.video.dto.VideoRequestDto;
 import pawparazzi.back.video.dto.VideoResponseDto;
 import pawparazzi.back.video.dto.VideoResponseViewDto;
@@ -64,7 +66,7 @@ public class VideoRequestController {
     }
 
     @PostMapping("/{battleId}")
-    public ResponseEntity<VideoResponseDto> createBattleVideoRequest(
+    public ResponseEntity<BattleVideoResponseDto> createBattleVideoRequest(
             @PathVariable Long battleId,
             @RequestHeader("Authorization") String token) throws IOException {
 
@@ -75,12 +77,12 @@ public class VideoRequestController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        CompletableFuture<VideoResponseDto> responseFuture = videoRequestService.createVideoRequestFromBattle(
+        CompletableFuture<BattleVideoResponseDto> responseFuture = videoRequestService.createVideoRequestFromBattle(
                 battleId,
                 userId
         );
 
-        VideoResponseDto response = responseFuture.join();
+        BattleVideoResponseDto response = responseFuture.join();
         return ResponseEntity.ok(response);
     }
 

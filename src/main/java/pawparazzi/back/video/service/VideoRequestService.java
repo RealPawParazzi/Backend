@@ -8,10 +8,10 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import pawparazzi.back.S3.S3UploadUtil;
 import pawparazzi.back.battle.dto.BattleResponseDto;
-import pawparazzi.back.battle.entity.Battle;
 import pawparazzi.back.battle.service.BattleService;
 import pawparazzi.back.pet.entity.Pet;
 import pawparazzi.back.pet.service.PetService;
+import pawparazzi.back.video.dto.BattleVideoResponseDto;
 import pawparazzi.back.video.dto.VideoRequestDto;
 import pawparazzi.back.video.dto.VideoResponseDto;
 import pawparazzi.back.video.dto.VideoResponseViewDto;
@@ -115,7 +115,7 @@ public class VideoRequestService {
     }
 
     //왼쪽이 나의 반려동물, 오른쪽이 상대방 반려동물
-    public CompletableFuture<VideoResponseDto> createVideoRequestFromBattle(Long battleId, Long userId) {
+    public CompletableFuture<BattleVideoResponseDto> createVideoRequestFromBattle(Long battleId, Long userId) {
         // 작업 ID 생성
         String jobId = UUID.randomUUID().toString();
 
@@ -175,10 +175,12 @@ public class VideoRequestService {
         videoRequestRepository.save(savedRequest);
         // 응답 DTO 생성
         return CompletableFuture.completedFuture(
-                VideoResponseDto.builder()
+                BattleVideoResponseDto.builder()
                         .requestId(savedRequest.getId())
                         .jobId(savedRequest.getJobId())
                         .status(savedRequest.getStatus())
+                        .imageUrl1(pet1Img)
+                        .imageUrl2(pet2Img)
                         .build()
         );
     }
