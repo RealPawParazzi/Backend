@@ -59,7 +59,7 @@ public class VideoRequestService {
                     // VideoRequest 엔티티 생성
                     VideoRequest videoRequest = VideoRequest.builder()
                             .prompt(requestDto.getPrompt())
-                            .imageUrl(String.join(",", imageUrls)) // 여러 이미지 URL을 콤마로 연결
+                            .imageUrl(imageUrls) // 여러 이미지 URL을 콤마로 연결
                             .userId(userId)
                             .jobId(jobId)
                             .build();
@@ -129,7 +129,7 @@ public class VideoRequestService {
         // VideoRequest 엔티티 생성
         VideoRequest videoRequest = VideoRequest.builder()
                 .prompt(battle.getRunwayPrompt())
-                .imageUrl(String.join(",", imageUrls)) // 여러 이미지 URL을 콤마로 연결
+                .imageUrl(imageUrls) // 여러 이미지 URL을 콤마로 연결
                 .userId(userId)
                 .jobId(jobId)
                 .winnerId(winnerId)

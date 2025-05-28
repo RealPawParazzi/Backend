@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Entity
@@ -22,8 +23,9 @@ public class VideoRequest {
     @Column(length = 10000)
     private String prompt;
 
-    @Column(name = "image_url")
-    private String imageUrl;
+    @Convert(converter = StringListConverter.class)
+    @Column(name = "image_url", length = 2000)
+    private List<String> imageUrl;
 
     @Column(name = "winner_id")
     private Long winnerId;

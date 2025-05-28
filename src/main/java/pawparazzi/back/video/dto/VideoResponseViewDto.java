@@ -3,6 +3,7 @@ package pawparazzi.back.video.dto;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -13,6 +14,6 @@ public class VideoResponseViewDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String prompt;
-    private String imageUrl;
+    private List<String> imageUrl;
     private String resultUrl;
 }

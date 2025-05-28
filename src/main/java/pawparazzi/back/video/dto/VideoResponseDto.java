@@ -16,4 +16,5 @@ public class VideoResponseDto {
     private String resultUrl;
     private Integer duration;
     private String errorMessage;
+    private String imageUrl;
 }
