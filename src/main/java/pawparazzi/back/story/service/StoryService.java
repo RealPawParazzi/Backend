@@ -44,9 +44,18 @@ public class StoryService {
         String mediaUrl;
         try {
             String originalFilename = mediaFile.getOriginalFilename();
-            String extension = ".mp4";
-            String fileName = "story/" + System.currentTimeMillis() + extension;
-            mediaUrl = s3AsyncService.uploadFile(fileName, mediaFile.getBytes(), "video/mp4").join();
+            String extension = originalFilename != null
+                    ? originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase()
+                    : "";
+
+            String newExtension = extension.equals(".mov") ? ".mp4" : extension;
+            String fileName = "story/" + System.currentTimeMillis() + newExtension;
+
+            // Content-Type 지정
+            String contentType = mediaFile.getContentType();
+            if (extension.equals(".mov")) contentType = "video/mp4";
+
+            mediaUrl = s3AsyncService.uploadFile(fileName, mediaFile.getBytes(), contentType).join();
         } catch (IOException e) {
             throw new RuntimeException("스토리 이미지 업로드 중 오류 발생", e);
         }
