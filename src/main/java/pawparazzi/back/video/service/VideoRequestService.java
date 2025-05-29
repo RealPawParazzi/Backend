@@ -276,4 +276,21 @@ public class VideoRequestService {
                 .resultUrl(latestWonBattle.getResultUrl())
                 .build();
     }
+
+    public boolean deleteVideoRequest(Long requestId, Long userId) {
+
+        Optional<VideoRequest> videoRequestOpt = videoRequestRepository.findById(requestId);
+        if (videoRequestOpt.isPresent()) {
+            VideoRequest videoRequest = videoRequestOpt.get();
+            if (videoRequest.getUserId().equals(userId)) {
+                videoRequestRepository.delete(videoRequest);
+                return true;
+            } else {
+                throw new RuntimeException("해당 요청을 삭제할 권한이 없습니다.");
+            }
+        } else {
+            throw new RuntimeException("해당 요청을 찾을 수 없습니다: " + requestId);
+        }
+
+    }
 }

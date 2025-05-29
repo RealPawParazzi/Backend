@@ -65,6 +65,25 @@ public class VideoRequestController {
         return ResponseEntity.ok(response);
     }
 
+    @DeleteMapping("/{requestId}")
+    public ResponseEntity<Void> deleteVideoRequest(
+            @PathVariable Long requestId,
+            @RequestHeader("Authorization") String token) {
+        Long userId;
+        try {
+            userId = jwtUtil.extractMemberId(token.replace("Bearer ", ""));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        boolean isDeleted = videoRequestService.deleteVideoRequest(requestId, userId);
+        if (isDeleted) {
+            return ResponseEntity.noContent().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @PostMapping("/{battleId}")
     public ResponseEntity<BattleVideoResponseDto> createBattleVideoRequest(
             @PathVariable Long battleId,
